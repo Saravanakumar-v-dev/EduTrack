@@ -1,0 +1,154 @@
+/* =========================================================
+    🌟 EduTrack Global Styles
+    ========================================================= */
+
+/* ✅ 1. Font import must always come FIRST */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* ✅ 2. Tailwind layers */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+    🌍 Base Global Styles
+    ========================================================= */
+
+/* --- 1. DEFINE CSS VARIABLES FOR THEME SWAP --- */
+/* These variables control the body's main background and text color */
+
+/* Light Mode Variables (Default) */
+:root {
+    --bg-start: #f8fafc; /* slate-50 */
+    --bg-mid: #ffffff;   /* white */
+    --bg-end: #f3f4f6;   /* gray-100 */
+    --text-color: #374151; /* gray-800 */
+}
+
+/* Dark Mode Variables (Override when html.dark is active) */
+html.dark {
+    --bg-start: #111827; /* gray-900 */
+    --bg-mid: #1f2937;   /* gray-800 */
+    --bg-end: #111827;   /* gray-900 */
+    --text-color: #f3f4f6; /* gray-100 */
+}
+
+/* --- 2. APPLY VARIABLES TO HTML AND BODY --- */
+html {
+    scroll-behavior: smooth;
+    font-family: 'Poppins', sans-serif;
+    @apply transition-colors duration-500 ease-in-out;
+}
+
+body {
+    /* Apply the gradient and text using the dynamic CSS variables */
+    background: linear-gradient(to bottom, var(--bg-start), var(--bg-mid), var(--bg-end));
+    color: var(--text-color);
+    @apply min-h-screen transition-colors duration-500 ease-in-out;
+}
+
+/* =========================================================
+    🧭 Smooth Animations & Transitions
+    ========================================================= */
+.fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+    will-change: transform, opacity;
+}
+
+.slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+    will-change: transform, opacity;
+}
+
+/* Optimize animations with will-change and transform-gpu */
+.fade-in, .slide-up {
+    will-change: transform, opacity;
+    transform: translateZ(0); /* Force GPU acceleration */
+    backface-visibility: hidden; 
+    perspective: 1000px; 
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) translateZ(0);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) translateZ(0);
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* =========================================================
+    🌈 Custom Scrollbar (Modern Minimal Style)
+    ========================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    /* Apply a semi-transparent slate color */
+    background-color: rgba(100, 116, 139, 0.5); 
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(71, 85, 105, 0.7);
+}
+
+/* =========================================================
+    🎬 Scroll Reveal Animation Classes
+    ========================================================= */
+.scroll-fade {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.scroll-fade.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* =========================================================
+    💫 Buttons and Cards Enhancements (Custom Tailwind Components)
+    ========================================================= */
+.btn-primary {
+    /* Define a reusable primary button style */
+    @apply bg-indigo-600 text-white px-5 py-2 rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:-translate-y-1;
+}
+
+.card {
+    /* Define a reusable card style with dark mode support and hover effect */
+    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 ease-in-out;
+}
+
+/* =========================================================
+    🌐 Responsive Utilities (Custom Tailwind Utilities)
+    ========================================================= */
+.container {
+    /* Define a responsive, centered container utility */
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.section-title {
+    /* Define a clean, styled section title utility */
+    @apply text-3xl font-semibold mb-6 text-indigo-600 dark:text-indigo-400;
+}
