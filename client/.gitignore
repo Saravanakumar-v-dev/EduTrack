@@ -1,0 +1,10 @@
+# Ignore all node_modules anywhere
+node_modules/
+**/node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
