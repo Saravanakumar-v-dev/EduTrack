@@ -8,8 +8,14 @@ const router = express.Router();
 
 // All routes protected (only teachers/admins should fetch school-level analytics)
 // If you want students to view their own analytics, create different endpoints or relax rules.
-router.get("/performance", protect, authorizeRoles("admin", "teacher"), getPerformance);
-router.get("/attendance", protect, authorizeRoles("admin", "teacher"), getAttendance);
-router.get("/grades", protect, authorizeRoles("admin", "teacher"), getGradeDistribution);
+// analyticsRoutes.js
+router.get("/student-dashboard", protect, authorize("student"), getStudentDashboard);
+
+router.get("/performance", protect, getPerformance);
+router.get("/attendance", protect, getAttendance);
+router.get("/grades", protect, getGradeDistribution);
+
+router.get("/admin-overview", protect, authorize("admin"), getAdminOverview);
+
 
 export default router;

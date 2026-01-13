@@ -19,7 +19,7 @@ export default function StudentTable({ students = [] }) {
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <div className="bg-white glass rounded-2xl p-4">
+    <div className="bg-white dark:bg-gray-800 glass rounded-2xl p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Students</h3>
         <div className="flex items-center gap-2">

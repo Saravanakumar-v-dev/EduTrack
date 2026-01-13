@@ -1,26 +1,24 @@
-const express = require('express');
+// routes/gradeRoutes.js
+import express from "express";
+import {
+  createGrade,
+  getGrades,
+  getGrade,
+  updateGrade,
+  deleteGrade,
+  getGradeReport,
+} from "../controllers/gradeController.js";
+import { protect } from "../middleware/authMiddleware.js";
+
 const router = express.Router();
-const { 
-    createGrade, 
-    getGrades, 
-    getGrade, 
-    updateGrade, 
-    deleteGrade,
-    getGradeReport // Aggregation route
-} = require('../controllers/gradeController');
 
-// NOTE: You should add protect and authorize middleware here for security
+router.use(protect);
 
-router.route('/')
-    .post(createGrade) // POST /api/grades (Admin only)
-    .get(getGrades);   // GET /api/grades (Admin/Teacher)
+router.post("/", createGrade);
+router.get("/", getGrades);
+router.get("/:id", getGrade);
+router.put("/:id", updateGrade);
+router.delete("/:id", deleteGrade);
+router.get("/:id/report", getGradeReport);
 
-router.route('/:id')
-    .get(getGrade)     // GET /api/grades/:id
-    .put(updateGrade)  // PUT /api/grades/:id (Admin only)
-    .delete(deleteGrade); // DELETE /api/grades/:id (Admin only)
-
-// Special report route
-router.get('/:id/report', getGradeReport); // GET /api/grades/:id/report
-
-module.exports = router;
+export default router;

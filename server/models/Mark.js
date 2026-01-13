@@ -1,71 +1,68 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const MarkSchema = mongoose.Schema({
-    // Link to the student who received the mark
+const markSchema = new mongoose.Schema(
+  {
     student: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'User', // Links to the main User model (where the student is defined)
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
-    // Link to the subject the mark is for
+
     subject: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'Subject',
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subject",
+      required: true,
+      index: true,
     },
-    // The numerical score or percentage received
+
     score: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 100, // Assuming a percentage score
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100,
     },
-    // Letter grade (e.g., A, B, C) derived from the score
-    letterGrade: {
-        type: String,
-        required: false,
+
+    examType: {
+      type: String,
+      enum: ["internal", "midterm", "final", "assignment", "lab"],
+      required: true,
     },
-    // Term or Semester (e.g., 'Q1', 'Semester 1')
-    term: {
-        type: String,
-        required: true,
-        trim: true,
+
+    examDate: {
+      type: Date,
+      default: Date.now,
+      index: true,
     },
-    // Type of assessment (e.g., 'Exam', 'Homework', 'Final Project')
-    assessmentType: {
-        type: String,
-        required: true,
-        trim: true,
+
+    recordedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", // teacher/admin
+      required: true,
     },
-    // Date the assessment was recorded
-    dateRecorded: {
-        type: Date,
-        default: Date.now,
-    }
-}, {
-    timestamps: true, // Adds createdAt and updatedAt fields
-});
 
+    remarks: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
-// Helper method to automatically calculate letter grade
-MarkSchema.methods.calculateLetterGrade = function() {
-    if (this.score >= 90) return 'A';
-    if (this.score >= 80) return 'B';
-    if (this.score >= 70) return 'C';
-    if (this.score >= 60) return 'D';
-    return 'F';
-};
+/* ======================================================
+   CONSTRAINTS
+====================================================== */
+/**
+ * Prevent duplicate mark entry:
+ * Same student + subject + examType + date
+ */
+markSchema.index(
+  { student: 1, subject: 1, examType: 1, examDate: 1 },
+  { unique: true }
+);
 
-
-// Pre-save hook to ensure letterGrade is set automatically
-MarkSchema.pre('save', function(next) {
-    if (this.isModified('score') && this.score !== undefined) {
-        this.letterGrade = this.calculateLetterGrade();
-    }
-    next();
-});
-
-const Mark = mongoose.model('Mark', MarkSchema);
-
-// CRITICAL: Use ES Module default export
+const Mark = mongoose.model("Mark", markSchema);
 export default Mark;

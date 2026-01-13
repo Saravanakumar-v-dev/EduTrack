@@ -1,44 +1,53 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const AttendanceSchema = mongoose.Schema({
-    // Reference to the User (Student) who this record belongs to
+const attendanceSchema = new mongoose.Schema(
+  {
     student: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'User', 
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
-    // Reference to the Class or Subject the attendance is for
-    class: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'Class', // Assuming you have a ClassModel
-    },
-    // The specific date of the attendance record
+
     date: {
-        type: Date,
-        required: true,
-        default: Date.now,
+      type: Date,
+      required: true,
+      index: true,
     },
-    // Status of attendance: Present, Absent, Tardy
-    status: {
-        type: String,
-        required: true,
-        enum: ['Present', 'Absent', 'Tardy'],
-        default: 'Present',
+
+    present: {
+      type: Boolean,
+      required: true,
     },
-    // Optional notes, e.g., reason for absence
-    notes: {
-        type: String,
-        required: false,
+
+    markedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", // teacher or admin
+      required: true,
     },
-}, {
-    timestamps: true, // Adds createdAt and updatedAt fields
-});
 
-// Enforce unique attendance record per student per day per class (optional but useful)
-AttendanceSchema.index({ student: 1, class: 1, date: 1 }, { unique: true });
+    note: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
-const Attendance = mongoose.model('Attendance', AttendanceSchema);
+/* ======================================================
+   CONSTRAINTS
+====================================================== */
+/**
+ * Prevent duplicate attendance:
+ * One student → one record per date
+ */
+attendanceSchema.index(
+  { student: 1, date: 1 },
+  { unique: true }
+);
 
-// CRITICAL FIX: Use ES Module default export
+const Attendance = mongoose.model("Attendance", attendanceSchema);
 export default Attendance;

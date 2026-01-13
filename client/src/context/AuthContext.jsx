@@ -1,103 +1,95 @@
-import React, { createContext, useState, useEffect, useCallback } from "react";
-import authService from "../services/authService"; // Ensure this service exists
-import { toast } from "react-hot-toast"; 
+import {
+  createContext,
+  useEffect,
+  useState,
+  useContext,
+  useCallback,
+} from "react";
+import axios from "../api/axios";
 
+/* ===================================================
+   CONTEXT
+=================================================== */
 export const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    // Try to load user from localStorage first to prevent flash of loading state
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  }); 
-  const [loading, setLoading] = useState(!localStorage.getItem('user')); 
+/* ===================================================
+   CUSTOM HOOK
+=================================================== */
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+  return context;
+};
 
-  // CRITICAL: Checks for a valid session by requesting the protected user profile.
-  const checkUserSession = useCallback(async () => {
-    if (!loading && user) return; // Skip if we already have user data
-    
-    setLoading(true);
+/* ===================================================
+   PROVIDER
+=================================================== */
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  /* ---------------------------------------------------
+     Fetch logged-in user from cookie (session restore)
+  --------------------------------------------------- */
+  const fetchProfile = useCallback(async () => {
     try {
-      // Calls /api/auth/profile. If the request succeeds (200 OK), 
-      // the JWT cookie was valid and sent by the browser.
-      const userData = await authService.getUserProfile(); 
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-    } catch (error) {
-      // Fails if no cookie is present or expired (401 Unauthorized).
+      const { data } = await axios.get("/auth/profile");
+      setUser(data);
+    } catch (err) {
       setUser(null);
-      localStorage.removeItem('user');
     } finally {
       setLoading(false);
     }
-  }, [loading, user]);
+  }, []);
 
   useEffect(() => {
-    checkUserSession();
-  }, [checkUserSession]);
+    fetchProfile();
+  }, [fetchProfile]);
 
-  // Function called by Login component AFTER the API request is successful.
-  // It receives the user object directly from the login API response (res.data).
-  const login = (userData) => { // UserData = {_id, name, email, role}
+  /* ---------------------------------------------------
+     Login (STATE ONLY – API already called in service)
+  --------------------------------------------------- */
+  const login = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    toast.success("Logged in successfully!");
-    
-    // Preload the next likely route based on user role
-    if (userData.role === 'student') {
-      preloadRoute('/profile');
-    } else {
-      preloadRoute('/dashboard');
-    }
   };
 
-  // Logout function with state cleanup
+  /* ---------------------------------------------------
+     Logout
+  --------------------------------------------------- */
   const logout = async () => {
     try {
-      await authService.logoutUser(); 
-      // Clear all auth-related state and storage
+      await axios.post("/auth/logout");
+    } finally {
       setUser(null);
-      localStorage.removeItem('user');
-      sessionStorage.removeItem('redirectPath');
-      // Clear any other cached data
-      localStorage.removeItem('cachedData');
-      localStorage.removeItem('lastRoute');
-      
-      // Reset loading state
-      setLoading(false);
-      
-      toast.success("Logged out successfully.");
-      
-      // Use a clean redirect to login
-      window.location.replace('/login');
-    } catch (error) {
-      console.error("Logout failed at API level:", error);
-      toast.error("Logout failed, please try again.");
-      // Force logout even if API call fails
-      setUser(null);
-      localStorage.clear(); // Clear all local storage as a safety measure
-      window.location.replace('/login');
     }
   };
 
-  const isLoggedIn = !!user;
-
-  const value = {
-    user,
-    loading,
-    login,
-    logout,
-    isLoggedIn,
+  /* ---------------------------------------------------
+     Update Profile
+  --------------------------------------------------- */
+  const updateProfile = async (payload) => {
+    const { data } = await axios.put("/auth/profile", payload);
+    setUser(data);
+    return data;
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="loader"></div>
-        <p className="ml-4 text-indigo-600">Checking session...</p>
-      </div>
-    );
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoggedIn: !!user,
+        loading,
+        login,
+        logout,
+        updateProfile,
+        refreshUser: fetchProfile,
+      }}
+    >
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 };
+
+export default AuthProvider;

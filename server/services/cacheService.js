@@ -1,96 +1,128 @@
-// backend/services/cacheService.js
+// server/services/cacheService.js
 
 /**
- * Simple in-memory caching service with TTL expiration.
- * Compatible with controllers using:
- * - cacheService.get(key)
- * - cacheService.set(key, value, ttlSeconds)
- * - cacheService.del(key)
- * - cacheService.invalidate(key)
- * - cacheService.generateKey(object)
+ * Simple in-memory cache with TTL
+ * --------------------------------
+ * ✔ No external dependencies
+ * ✔ Safe for development & small deployments
+ * ✔ API-compatible with your controllers
+ *
+ * NOTE:
+ * - This cache is process-local.
+ * - For production scale, replace with Redis.
  */
 
 class CacheService {
     constructor() {
-        this.cache = new Map(); // key → { value, expiresAt }
+      this.store = new Map();
     }
-
-    /**
-     * Generate a deterministic cache key from any object.
-     * Useful when caching queries with filters, pagination, etc.
-     */
-    generateKey(obj = {}) {
-        try {
-            return `cache:${JSON.stringify(obj, Object.keys(obj).sort())}`;
-        } catch (err) {
-            // fallback for unusual objects
-            return `cache:${Date.now()}`;
-        }
+  
+    /* ======================================================
+       INTERNAL HELPERS
+    ====================================================== */
+  
+    _isExpired(entry) {
+      if (!entry) return true;
+      if (!entry.expiry) return false;
+      return Date.now() > entry.expiry;
     }
-
-    /**
-     * Save data to cache with TTL (seconds)
-     */
-    set(key, value, ttlSeconds = 300) {
-        const expiresAt = Date.now() + ttlSeconds * 1000;
-        this.cache.set(key, { value, expiresAt });
+  
+    _cleanup(key) {
+      this.store.delete(key);
     }
-
-    /**
-     * Retrieve data from cache if not expired.
-     */
+  
+    /* ======================================================
+       BASIC OPERATIONS
+    ====================================================== */
+  
     get(key) {
-        const entry = this.cache.get(key);
-
-        if (!entry) return null;
-
-        if (Date.now() > entry.expiresAt) {
-            // expired → delete
-            this.cache.delete(key);
-            return null;
-        }
-
-        return entry.value;
+      const entry = this.store.get(key);
+      if (!entry) return null;
+  
+      if (this._isExpired(entry)) {
+        this._cleanup(key);
+        return null;
+      }
+  
+      return entry.value;
     }
-
-    /**
-     * Remove a single cache key.
-     */
+  
+    set(key, value, ttlSeconds = 300) {
+      if (!key) return;
+  
+      const expiry =
+        typeof ttlSeconds === "number"
+          ? Date.now() + ttlSeconds * 1000
+          : null;
+  
+      this.store.set(key, {
+        value,
+        expiry,
+      });
+    }
+  
     del(key) {
-        this.cache.delete(key);
+      if (!key) return;
+      this.store.delete(key);
     }
-
-    /**
-     * Alias for del()
-     */
+  
+    remove(key) {
+      // alias for del (used by some controllers)
+      this.del(key);
+    }
+  
     invalidate(key) {
-        this.del(key);
+      // alias for del (used by some controllers)
+      this.del(key);
     }
-
-    /**
-     * Clear all cached keys.
-     */
-    clear() {
-        this.cache.clear();
-    }
-
-    /**
-     * Internal cleanup: remove expired keys occasionally.
-     */
-    cleanupExpired() {
-        const now = Date.now();
-        for (const [key, entry] of this.cache.entries()) {
-            if (now > entry.expiresAt) {
-                this.cache.delete(key);
-            }
+  
+    /* ======================================================
+       WILDCARD INVALIDATION
+    ====================================================== */
+  
+    invalidateByPrefix(prefix) {
+      if (!prefix) return;
+  
+      for (const key of this.store.keys()) {
+        if (key.startsWith(prefix)) {
+          this.store.delete(key);
         }
+      }
     }
-}
-
-// Create a singleton instance
-const cacheService = new CacheService();
-
-// Automatic cleanup every 1 minute
-setInterval(() => cacheService.cleanupExpired(), 60 * 1000);
-
-export default cacheService;
+  
+    /* ======================================================
+       KEY GENERATION
+    ====================================================== */
+  
+    generateKey(params = {}) {
+      try {
+        return Object.entries(params)
+          .filter(([_, v]) => v !== undefined && v !== null)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([k, v]) => `${k}:${v}`)
+          .join("|");
+      } catch (err) {
+        return JSON.stringify(params);
+      }
+    }
+  
+    /* ======================================================
+       DEBUG / MAINTENANCE
+    ====================================================== */
+  
+    clear() {
+      this.store.clear();
+    }
+  
+    size() {
+      return this.store.size;
+    }
+  }
+  
+  /* ======================================================
+     EXPORT SINGLETON
+  ====================================================== */
+  
+  const cacheService = new CacheService();
+  export default cacheService;
+  

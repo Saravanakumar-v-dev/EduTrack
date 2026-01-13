@@ -1,130 +1,221 @@
-import asyncHandler from 'express-async-handler';
-// CRITICAL: Ensure these models exist and use 'export default'
-import Subject from '../models/Subject.js';
-import User from '../models/User.js'; // To reference the teacher
+// server/controllers/subjectController.js
+import asyncHandler from "express-async-handler";
+import mongoose from "mongoose";
+import Subject from "../models/Subject.js";
+import User from "../models/User.js";
+import Mark from "../models/Mark.js";
 
-// @desc    Create a new subject
+/* ======================================================
+   CREATE SUBJECT
+====================================================== */
 // @route   POST /api/subjects
-// @access  Private/Admin, Teacher
+// @access  Admin, Teacher
 export const createSubject = asyncHandler(async (req, res) => {
-    const { name, code, description, teacherId } = req.body;
+  if (!["admin", "teacher"].includes(req.user.role)) {
+    res.status(403);
+    throw new Error("Only admins or teachers can create subjects");
+  }
 
-    if (!name || !code) {
-        res.status(400);
-        throw new Error('Please include subject name and code.');
+  const { name, code, description, teacherId } = req.body;
+
+  if (!name || !code) {
+    res.status(400);
+    throw new Error("Subject name and code are required");
+  }
+
+  const subjectExists = await Subject.findOne({ code });
+  if (subjectExists) {
+    res.status(400);
+    throw new Error("Subject with this code already exists");
+  }
+
+  let teacher = null;
+
+  // Admin can assign any teacher
+  if (teacherId) {
+    teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      res.status(404);
+      throw new Error("Assigned teacher not found or invalid");
     }
+  }
 
-    const subjectExists = await Subject.findOne({ code });
+  // Teacher creating subject → auto-assign self
+  if (req.user.role === "teacher") {
+    teacher = req.user._id;
+  }
 
-    if (subjectExists) {
-        res.status(400);
-        throw new Error('A subject with this code already exists.');
-    }
+  const subject = await Subject.create({
+    name,
+    code,
+    description,
+    teacher,
+  });
 
-    let teacher = null;
-    if (teacherId) {
-        teacher = await User.findById(teacherId);
-        if (!teacher || teacher.role !== 'teacher') {
-            res.status(404);
-            throw new Error('Assigned teacher not found or is not a teacher.');
-        }
-    }
-
-    const subject = await Subject.create({
-        name,
-        code,
-        description,
-        teacher: teacher ? teacher._id : undefined,
-    });
-
-    res.status(201).json({
-        message: 'Subject created successfully.',
-        data: subject,
-    });
+  res.status(201).json({
+    success: true,
+    message: "Subject created successfully",
+    data: subject,
+  });
 });
 
-
-// @desc    Get all subjects
+/* ======================================================
+   GET ALL SUBJECTS
+====================================================== */
 // @route   GET /api/subjects
-// @access  Private
+// @access  Admin, Teacher, Student
 export const getAllSubjects = asyncHandler(async (req, res) => {
-    const subjects = await Subject.find({}).populate('teacher', 'name email');
+  const filter = {};
 
-    res.status(200).json(subjects);
+  // Teacher → only assigned subjects
+  if (req.user.role === "teacher") {
+    filter.teacher = req.user._id;
+  }
+
+  const subjects = await Subject.find(filter)
+    .populate("teacher", "name email")
+    .sort({ name: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: subjects.length,
+    data: subjects,
+  });
 });
 
-
-// @desc    Get single subject by ID
+/* ======================================================
+   GET SINGLE SUBJECT
+====================================================== */
 // @route   GET /api/subjects/:id
-// @access  Private
+// @access  Admin, Teacher, Student
 export const getSubjectById = asyncHandler(async (req, res) => {
-    const subject = await Subject.findById(req.params.id).populate('teacher', 'name email');
+  const { id } = req.params;
 
-    if (subject) {
-        res.status(200).json(subject);
-    } else {
-        res.status(404);
-        throw new Error('Subject not found.');
-    }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400);
+    throw new Error("Invalid subject ID");
+  }
+
+  const subject = await Subject.findById(id).populate(
+    "teacher",
+    "name email"
+  );
+
+  if (!subject) {
+    res.status(404);
+    throw new Error("Subject not found");
+  }
+
+  // Teacher can only view assigned subject
+  if (
+    req.user.role === "teacher" &&
+    subject.teacher &&
+    subject.teacher._id.toString() !== req.user._id.toString()
+  ) {
+    res.status(403);
+    throw new Error("Not authorized to view this subject");
+  }
+
+  res.status(200).json({
+    success: true,
+    data: subject,
+  });
 });
 
-
-// @desc    Update a subject
+/* ======================================================
+   UPDATE SUBJECT
+====================================================== */
 // @route   PUT /api/subjects/:id
-// @access  Private/Admin, Teacher
+// @access  Admin, Teacher (own)
 export const updateSubject = asyncHandler(async (req, res) => {
-    const { name, code, description, teacherId } = req.body;
-    const subject = await Subject.findById(req.params.id);
+  const { id } = req.params;
+  const { name, code, description, teacherId } = req.body;
 
-    if (!subject) {
-        res.status(404);
-        throw new Error('Subject not found.');
-    }
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400);
+    throw new Error("Invalid subject ID");
+  }
 
-    // Update fields
-    subject.name = name || subject.name;
-    subject.code = code || subject.code;
-    subject.description = description || subject.description;
-    
-    // Handle teacher update
+  const subject = await Subject.findById(id);
+  if (!subject) {
+    res.status(404);
+    throw new Error("Subject not found");
+  }
+
+  // Teacher can only update own subject
+  if (
+    req.user.role === "teacher" &&
+    subject.teacher?.toString() !== req.user._id.toString()
+  ) {
+    res.status(403);
+    throw new Error("Not authorized to update this subject");
+  }
+
+  // Update basic fields
+  if (name) subject.name = name;
+  if (code) subject.code = code;
+  if (description !== undefined) subject.description = description;
+
+  // Admin can reassign / unassign teacher
+  if (req.user.role === "admin") {
     if (teacherId) {
-        const teacher = await User.findById(teacherId);
-        if (!teacher || teacher.role !== 'teacher') {
-             res.status(404);
-             throw new Error('Assigned teacher not found or is not a teacher.');
-        }
-        subject.teacher = teacher._id;
-    } else if (teacherId === null) {
-        subject.teacher = undefined; // Allow unassigning teacher
-    }
-    
-    const updatedSubject = await subject.save();
-
-    res.status(200).json({
-        message: 'Subject updated successfully.',
-        data: updatedSubject,
-    });
-});
-
-
-// @desc    Delete a subject
-// @route   DELETE /api/subjects/:id
-// @access  Private/Admin
-export const deleteSubject = asyncHandler(async (req, res) => {
-    const subject = await Subject.findById(req.params.id);
-
-    if (!subject) {
+      const teacher = await User.findById(teacherId);
+      if (!teacher || teacher.role !== "teacher") {
         res.status(404);
-        throw new Error('Subject not found.');
+        throw new Error("Assigned teacher not found or invalid");
+      }
+      subject.teacher = teacher._id;
     }
 
-    // You should add logic here to check if the subject is currently in use (e.g., linked to grades or students)
+    if (teacherId === null) {
+      subject.teacher = undefined;
+    }
+  }
 
-    await Subject.deleteOne({ _id: subject._id });
+  const updatedSubject = await subject.save();
 
-    res.status(200).json({ 
-        message: 'Subject removed successfully.' 
-    });
+  res.status(200).json({
+    success: true,
+    message: "Subject updated successfully",
+    data: updatedSubject,
+  });
 });
 
-// All functions are correctly exported using 'export const'.
+/* ======================================================
+   DELETE SUBJECT
+====================================================== */
+// @route   DELETE /api/subjects/:id
+// @access  Admin only
+export const deleteSubject = asyncHandler(async (req, res) => {
+  if (req.user.role !== "admin") {
+    res.status(403);
+    throw new Error("Only admins can delete subjects");
+  }
+
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400);
+    throw new Error("Invalid subject ID");
+  }
+
+  const subject = await Subject.findById(id);
+  if (!subject) {
+    res.status(404);
+    throw new Error("Subject not found");
+  }
+
+  // Prevent deletion if marks exist
+  const marksExist = await Mark.exists({ subject: subject._id });
+  if (marksExist) {
+    res.status(400);
+    throw new Error("Cannot delete subject with recorded marks");
+  }
+
+  await subject.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: "Subject deleted successfully",
+  });
+});
