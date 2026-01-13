@@ -1,34 +1,43 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const SubjectSchema = mongoose.Schema({
+const subjectSchema = new mongoose.Schema(
+  {
     name: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
     },
+
     code: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      index: true, // e.g., CS101
     },
+
     description: {
-        type: String,
-        required: false,
+      type: String,
+      trim: true,
+      maxlength: 300,
     },
-    // Reference to the teacher assigned to this subject (User model)
+
     teacher: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: false, // Subject can exist without an assigned teacher initially
-        ref: 'User',
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", // role: teacher
     },
-}, {
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
     timestamps: true,
-});
+  }
+);
 
-
-const Subject = mongoose.model('Subject', SubjectSchema);
-
-// CRITICAL FIX: Use ES Module default export
+const Subject = mongoose.model("Subject", subjectSchema);
 export default Subject;

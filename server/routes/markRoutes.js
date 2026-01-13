@@ -1,22 +1,24 @@
-const express = require('express');
+// routes/markRoutes.js
+import express from "express";
+import {
+  createMark,
+  bulkCreateMarks,
+  getMarks,
+  getMark,
+  updateMark,
+  deleteMark,
+} from "../controllers/markController.js";
+import { protect } from "../middleware/authMiddleware.js";
+
 const router = express.Router();
-const { 
-    createMark, 
-    getMarks, 
-    getMark, 
-    updateMark, 
-    deleteMark 
-} = require('../controllers/markController');
 
-// NOTE: You should add protect and authorize middleware here for security
+router.use(protect);
 
-router.route('/')
-    .post(createMark) // POST /api/marks
-    .get(getMarks); // GET /api/marks
+router.post("/bulk", bulkCreateMarks);
+router.post("/", createMark);
+router.get("/", getMarks);
+router.get("/:id", getMark);
+router.put("/:id", updateMark);
+router.delete("/:id", deleteMark);
 
-router.route('/:id')
-    .get(getMark) // GET /api/marks/:id
-    .put(updateMark) // PUT /api/marks/:id
-    .delete(deleteMark); // DELETE /api/marks/:id
-
-module.exports = router;
+export default router;

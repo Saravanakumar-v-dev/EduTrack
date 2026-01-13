@@ -1,61 +1,122 @@
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: process.env.EMAIL_PORT == 465,
-    auth: {
+/* ======================================================
+   TRANSPORTER SETUP WITH AUTO-ETHEREAL
+====================================================== */
+let transporter;
+let etherealCredentials = null;
+
+// Initialize transporter (async)
+async function initializeTransporter() {
+  // If email credentials are provided in .env, use them
+  if (
+    process.env.EMAIL_HOST &&
+    process.env.EMAIL_USER &&
+    process.env.EMAIL_PASS
+  ) {
+    transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: Number(process.env.EMAIL_PORT),
+      secure: Number(process.env.EMAIL_PORT) === 465,
+      auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
-    },
-});
+      },
+    });
 
-/**
- * Sends a 6-digit OTP code via email.
- * @param {string} toEmail - Recipient's email.
- * @param {string} otp - The 6-digit OTP code.
- * @param {string} purpose - The reason for the OTP (e.g., 'Account Verification', 'Password Reset').
- */
-export const sendOtpEmail = async (toEmail, otp, purpose = 'Verification') => {
-    const mailOptions = {
-        from: `EduTrack Support <${process.env.EMAIL_USER}>`,
-        to: toEmail,
-        subject: `EduTrack - Your ${purpose} Code`,
-        html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-                <h2>${purpose} Code</h2>
-                <p>Please use the following 6-digit code to complete your action:</p>
-                <p style="font-size: 24px; font-weight: bold; margin: 20px 0; letter-spacing: 2px;">
-                    ${otp}
-                </p>
-                <p>This code will expire in 10 minutes.</p>
-                <p>If you did not request this code, please ignore this email.</p>
-                <p>Thank you,</p>
-                <p>The EduTrack Team</p>
-            </div>
-        `,
-        text: `Your EduTrack ${purpose} Code is: ${otp}\nThis code expires in 10 minutes. If you did not request this, please ignore this email.`,
-    };
+    console.log(`ℹ️  Using email config: ${process.env.EMAIL_HOST}`);
+  } else {
+    // Auto-create Ethereal test account for development
+    console.log("📧 No email credentials found - creating Ethereal test account...");
 
-    try {
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`OTP email sent to ${toEmail} for ${purpose}. Message ID: ${info.messageId}`);
-        // Log Ethereal preview URL if using Ethereal
-        if (process.env.EMAIL_HOST === 'smtp.ethereal.email' && nodemailer.getTestMessageUrl) {
-            console.log(`Ethereal Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
-        }
-        return info;
-    } catch (error) {
-        console.error(`Error sending OTP email to ${toEmail}:`, error);
-        throw new Error(`Failed to send ${purpose} email.`);
-    }
+    const testAccount = await nodemailer.createTestAccount();
+    etherealCredentials = testAccount;
+
+    transporter = nodemailer.createTransport({
+      host: testAccount.smtp.host,
+      port: testAccount.smtp.port,
+      secure: testAccount.smtp.secure,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+
+    console.log("\n" + "=".repeat(70));
+    console.log("✅ ETHEREAL TEST ACCOUNT AUTO-CREATED!");
+    console.log("=".repeat(70));
+    console.log(`📧 Email: ${testAccount.user}`);
+    console.log(`🔑 Password: ${testAccount.pass}`);
+    console.log(`🌐 View emails at: https://ethereal.email/messages`);
+    console.log("=".repeat(70) + "\n");
+  }
+}
+
+/* ======================================================
+   VERIFY TRANSPORTER (ON STARTUP)
+====================================================== */
+export const verifyEmailTransporter = async () => {
+  try {
+    await initializeTransporter();
+    await transporter.verify();
+    console.log("✅ Email service ready");
+  } catch (err) {
+    console.error("❌ Email service failed:", err.message);
+  }
 };
 
-// Keep the sendPasswordResetEmail function if you still need token-based reset elsewhere,
-// otherwise, you can remove it if OTP is the only method now.
-export const sendPasswordResetEmail = async (toEmail, resetToken) => {
-    // ... (existing token-based reset email logic) ...
+/* ======================================================
+   SEND OTP EMAIL
+====================================================== */
+export const sendOtpEmail = async (
+  toEmail,
+  otp,
+  purpose = "Verification"
+) => {
+  if (!transporter) {
+    await initializeTransporter();
+  }
+
+  if (!toEmail || !otp) {
+    throw new Error("Email and OTP are required");
+  }
+
+  const senderEmail = etherealCredentials
+    ? etherealCredentials.user
+    : process.env.EMAIL_USER;
+
+  const mailOptions = {
+    from: `EduTrack Support <${senderEmail}>`,
+    to: toEmail,
+    subject: `EduTrack | ${purpose} Code`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto;">
+        <h2 style="color:#4f46e5;">${purpose}</h2>
+        <p>Your 6-digit code:</p>
+        <h1 style="letter-spacing:6px;">${otp}</h1>
+        <p>Expires in 10 minutes.</p>
+      </div>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log(`📧 OTP email sent → ${toEmail}`);
+
+    if (etherealCredentials || process.env.EMAIL_HOST === "smtp.ethereal.email") {
+      const preview = nodemailer.getTestMessageUrl(info);
+      if (preview) {
+        console.log("🔗 OTP Preview:", preview);
+      }
+    }
+
+    return info;
+  } catch (error) {
+    console.error("❌ Email send failed:", error.message);
+    throw error;
+  }
 };

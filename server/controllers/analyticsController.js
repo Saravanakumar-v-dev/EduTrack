@@ -1,43 +1,98 @@
 // server/controllers/analyticsController.js
 import asyncHandler from "express-async-handler";
 import mongoose from "mongoose";
-import Grade from "../models/Grade.js";         // expects: { student: ObjectId, subject, score, date }
-import Attendance from "../models/Attendance.js"; // expects: { student: ObjectId, date, present: Boolean }
-import User from "../models/User.js";           // student user model
+import Grade from "../models/Grade.js";
+import Attendance from "../models/Attendance.js";
+import User from "../models/User.js";
 
-// utility: compute startDate from range param
+/* ======================================================
+   UTILITIES
+====================================================== */
+
 const getStartDate = (range) => {
   const now = new Date();
-  if (range === "3m") {
-    now.setMonth(now.getMonth() - 3);
-  } else if (range === "12m") {
-    now.setMonth(now.getMonth() - 12);
-  } else {
-    // default 6 months
-    now.setMonth(now.getMonth() - 6);
-  }
-  // set to first day of month for stable grouping
+  if (range === "3m") now.setMonth(now.getMonth() - 3);
+  else if (range === "12m") now.setMonth(now.getMonth() - 12);
+  else now.setMonth(now.getMonth() - 6);
   return new Date(now.getFullYear(), now.getMonth(), 1);
 };
 
 const monthLabel = (isoMonth) => {
-  // isoMonth e.g. "2025-01"
   const [year, month] = isoMonth.split("-");
   const dt = new Date(Number(year), Number(month) - 1, 1);
-  return dt.toLocaleString("default", { month: "short", year: "numeric" }); // "Jan 2025"
+  return dt.toLocaleString("default", { month: "short", year: "numeric" });
 };
 
-/**
- * GET /analytics/performance
- * returns monthly avg score: [{ month: "2025-01", monthLabel: "Jan 2025", averageScore: 82 }, ...]
- */
+/* ======================================================
+   ROLE-AWARE MATCH BUILDER
+====================================================== */
+
+const buildMatch = (req, startDate) => {
+  const match = { date: { $gte: startDate } };
+
+  // Student → only own data
+  if (req.user.role === "student") {
+    match.student = new mongoose.Types.ObjectId(req.user._id);
+  }
+
+  // Teacher → students they taught (optional filter by teacher)
+  if (req.user.role === "teacher") {
+    match.teacher = new mongoose.Types.ObjectId(req.user._id);
+  }
+
+  // Admin → no restriction (global analytics)
+
+  return match;
+};
+
+/* ======================================================
+   STUDENT DASHBOARD (SUMMARY)
+====================================================== */
+
+export const getStudentDashboard = asyncHandler(async (req, res) => {
+  const studentId = req.user._id;
+
+  const grades = await Grade.find({ student: studentId });
+  const attendance = await Attendance.find({ student: studentId });
+
+  const overallAverage =
+    grades.reduce((sum, g) => sum + g.score, 0) / (grades.length || 1);
+
+  const attendancePct =
+    attendance.reduce((sum, a) => sum + (a.present ? 1 : 0), 0) /
+    (attendance.length || 1) *
+    100;
+
+  const riskLevel =
+    overallAverage < 40 || attendancePct < 70 ? "High Risk" : "Normal";
+
+  res.json({
+    overallAverage: Math.round(overallAverage),
+    totalSubjects: grades.length,
+    attendance: Math.round(attendancePct),
+    riskLevel,
+    subjects: grades.map((g) => ({
+      subject: g.subject,
+      marks: g.score,
+    })),
+    recentResults: grades.slice(-5).map((g) => ({
+      exam: g.subject,
+      score: g.score,
+    })),
+  });
+});
+
+/* ======================================================
+   PERFORMANCE (MONTHLY AVG SCORE)
+====================================================== */
+
 export const getPerformance = asyncHandler(async (req, res) => {
   const range = req.query.range || "6m";
   const startDate = getStartDate(range);
+  const match = buildMatch(req, startDate);
 
-  // aggregate grades grouped by year-month
   const agg = await Grade.aggregate([
-    { $match: { date: { $gte: startDate } } },
+    { $match: match },
     {
       $project: {
         score: 1,
@@ -53,27 +108,26 @@ export const getPerformance = asyncHandler(async (req, res) => {
     { $sort: { _id: 1 } },
   ]);
 
-  const result = agg.map((r) => ({
-    month: r._id,
-    monthLabel: monthLabel(r._id),
-    averageScore: Number(r.averageScore.toFixed(2)),
-  }));
-
-  res.json(result);
+  res.json(
+    agg.map((r) => ({
+      month: r._id,
+      monthLabel: monthLabel(r._id),
+      averageScore: Number(r.averageScore.toFixed(2)),
+    }))
+  );
 });
 
-/**
- * GET /analytics/attendance
- * returns monthly attendance percentage: [{ month: "2025-01", monthLabel:"Jan 2025", attendancePct: 92 }, ...]
- *
- * Attendance collection assumption: for each date there are attendance docs with present: true/false
- */
+/* ======================================================
+   ATTENDANCE (MONTHLY %)
+====================================================== */
+
 export const getAttendance = asyncHandler(async (req, res) => {
   const range = req.query.range || "6m";
   const startDate = getStartDate(range);
+  const match = buildMatch(req, startDate);
 
   const agg = await Attendance.aggregate([
-    { $match: { date: { $gte: startDate } } },
+    { $match: match },
     {
       $project: {
         present: 1,
@@ -89,63 +143,47 @@ export const getAttendance = asyncHandler(async (req, res) => {
     },
     {
       $project: {
-        attendancePct: { $cond: [{ $gt: ["$totalCount", 0] }, { $multiply: [{ $divide: ["$presentCount", "$totalCount"] }, 100] }, 0] },
+        attendancePct: {
+          $cond: [
+            { $gt: ["$totalCount", 0] },
+            { $multiply: [{ $divide: ["$presentCount", "$totalCount"] }, 100] },
+            0,
+          ],
+        },
       },
     },
     { $sort: { _id: 1 } },
   ]);
 
-  const result = agg.map((r) => ({
-    month: r._id,
-    monthLabel: monthLabel(r._id),
-    attendance: Number((r.attendancePct ?? 0).toFixed(2)),
-  }));
-
-  res.json(result);
+  res.json(
+    agg.map((r) => ({
+      month: r._id,
+      monthLabel: monthLabel(r._id),
+      attendance: Number(r.attendancePct.toFixed(2)),
+    }))
+  );
 });
 
-/**
- * GET /analytics/grades
- * returns grade distribution counts: [{ grade: "A", count: 120 }, ... ]
- *
- * grade buckets: A: >=90, B:80-89, C:70-79, D:60-69, F:<60
- */
+/* ======================================================
+   GRADE DISTRIBUTION (A/B/C/D/F)
+====================================================== */
+
 export const getGradeDistribution = asyncHandler(async (req, res) => {
-  // optional range filter to limit grades considered
   const range = req.query.range || "6m";
   const startDate = getStartDate(range);
+  const match = buildMatch(req, startDate);
 
-  // Aggregation to bucket scores into letters
   const agg = await Grade.aggregate([
-    { $match: { date: { $gte: startDate } } },
-    {
-      $bucket: {
-        groupBy: "$score",
-        boundaries: [0, 60, 70, 80, 90, 101], // buckets: 0-59,60-69,70-79,80-89,90-100
-        default: "Other",
-        output: {
-          count: { $sum: 1 },
-        },
-      },
-    },
-  ]);
-
-  // Map bucket boundaries to labels (aggregation returns documents with _id = bucket lower boundary or 'Other')
-  // Because $bucket returns buckets keyed by boundary lower-bound as numbers, we need robust mapping:
-  // We'll instead compute via $project + $group using $switch so mapping is easier:
-
-  const agg2 = await Grade.aggregate([
-    { $match: { date: { $gte: startDate } } },
+    { $match: match },
     {
       $project: {
-        score: 1,
         gradeLabel: {
           $switch: {
             branches: [
               { case: { $gte: ["$score", 90] }, then: "A" },
-              { case: { $and: [{ $gte: ["$score", 80] }, { $lt: ["$score", 90] }] }, then: "B" },
-              { case: { $and: [{ $gte: ["$score", 70] }, { $lt: ["$score", 80] }] }, then: "C" },
-              { case: { $and: [{ $gte: ["$score", 60] }, { $lt: ["$score", 70] }] }, then: "D" },
+              { case: { $gte: ["$score", 80] }, then: "B" },
+              { case: { $gte: ["$score", 70] }, then: "C" },
+              { case: { $gte: ["$score", 60] }, then: "D" },
             ],
             default: "F",
           },
@@ -158,17 +196,25 @@ export const getGradeDistribution = asyncHandler(async (req, res) => {
         count: { $sum: 1 },
       },
     },
-    { $sort: { _id: 1 } },
   ]);
 
-  // Normalize output to ensure all grade labels exist
   const labels = ["A", "B", "C", "D", "F"];
-  const countsMap = {};
-  agg2.forEach((r) => {
-    countsMap[r._id] = r.count;
+  const map = {};
+  agg.forEach((g) => (map[g._id] = g.count));
+
+  res.json(labels.map((l) => ({ grade: l, count: map[l] || 0 })));
+});
+
+/* ======================================================
+   ADMIN OVERVIEW
+====================================================== */
+
+export const getAdminOverview = asyncHandler(async (req, res) => {
+  const totalStudents = await User.countDocuments({ role: "student" });
+  const totalTeachers = await User.countDocuments({ role: "teacher" });
+
+  res.json({
+    totalStudents,
+    totalTeachers,
   });
-
-  const result = labels.map((label) => ({ grade: label, count: countsMap[label] || 0 }));
-
-  res.json(result);
 });

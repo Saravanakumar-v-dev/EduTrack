@@ -1,406 +1,258 @@
 // server/controllers/studentController.js
 import asyncHandler from "express-async-handler";
-import User from "../models/User.js";
 import mongoose from "mongoose";
+import User from "../models/User.js";
+import Mark from "../models/Mark.js";
+import Grade from "../models/Grade.js";
 import cacheService from "../services/cacheService.js";
 
-/**
- * Helper: try to remove cache keys if service supports it.
- */
+/* ======================================================
+   CACHE INVALIDATION (SAFE)
+====================================================== */
 const safeInvalidateCache = (key) => {
   try {
     if (!key) return;
-    if (typeof cacheService.del === "function") {
-      cacheService.del(key);
-    } else if (typeof cacheService.invalidate === "function") {
-      cacheService.invalidate(key);
-    } else if (typeof cacheService.remove === "function") {
-      cacheService.remove(key);
-    } else {
-      // fallback: overwrite with null (short TTL)
-      cacheService.set(key, null, 1);
-    }
+    if (cacheService?.del) cacheService.del(key);
+    else if (cacheService?.invalidate) cacheService.invalidate(key);
+    else if (cacheService?.remove) cacheService.remove(key);
+    else cacheService?.set?.(key, null, 1);
   } catch (err) {
-    // swallow cache errors (do not break API)
-    console.warn("Cache invalidation failed for key", key, err);
+    console.warn("Cache invalidation failed:", key);
   }
-}
+};
 
-/**
- * @desc    Get all student profiles with related data
- * @route   GET /api/students
- * @access  Private/Admin, Teacher
- */
+/* ======================================================
+   GET ALL STUDENTS
+====================================================== */
+// @route   GET /api/students
+// @access  Admin, Teacher
 export const getAllStudents = asyncHandler(async (req, res) => {
-  // Generate cache key from request parameters
-  const cacheKey = cacheService.generateKey
-    ? cacheService.generateKey({
-        page: req.query.page,
-        limit: req.query.limit,
-        name: req.query.name,
-        email: req.query.email,
-        minGrade: req.query.minGrade,
-        maxGrade: req.query.maxGrade,
-        sortBy: req.query.sortBy,
-        order: req.query.order,
-        fields: req.query.fields,
-      })
-    : `students:${JSON.stringify(req.query || {})}`;
-
-  // Try to get data from cache
-  const cachedData = cacheService.get ? cacheService.get(cacheKey) : null;
-  if (cachedData) {
-    return res.status(200).json(cachedData);
+  if (!["admin", "teacher"].includes(req.user.role)) {
+    res.status(403);
+    throw new Error("Access denied");
   }
 
-  // Pagination params
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const cacheKey = `students:${JSON.stringify(req.query)}`;
+  const cached = cacheService?.get?.(cacheKey);
+  if (cached) return res.json(cached);
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  // Fields projection
-  const fields = req.query.fields
-    ? req.query.fields.split(",").reduce((acc, field) => {
-        acc[field] = 1;
-        return acc;
-      }, {})
-    : null;
-
-  // Build match query
-  const matchQuery = { role: "student" };
+  const match = { role: "student" };
 
   if (req.query.name) {
-    matchQuery.name = { $regex: req.query.name, $options: "i" };
+    match.name = { $regex: req.query.name, $options: "i" };
   }
   if (req.query.email) {
-    matchQuery.email = { $regex: req.query.email, $options: "i" };
+    match.email = { $regex: req.query.email, $options: "i" };
   }
-  if (req.query.minGrade || req.query.maxGrade) {
-    matchQuery.averageGrade = {};
-    if (req.query.minGrade) matchQuery.averageGrade.$gte = parseFloat(req.query.minGrade);
-    if (req.query.maxGrade) matchQuery.averageGrade.$lte = parseFloat(req.query.maxGrade);
+  if (req.query.assignedTeacher) {
+    match.assignedTeacher = new mongoose.Types.ObjectId(req.query.assignedTeacher);
   }
 
-  const sortField = req.query.sortBy || "name";
-  const sortOrder = req.query.order === "desc" ? -1 : 1;
-  const sortStage = { $sort: { [sortField]: sortOrder } };
-
-  const totalCount = await User.countDocuments(matchQuery);
-  const totalPages = Math.ceil(totalCount / limit);
+  const total = await User.countDocuments(match);
 
   const students = await User.aggregate([
-    { $match: matchQuery },
-    { $project: fields ? { ...fields, password: 0 } : { password: 0 } },
+    { $match: match },
+    { $project: { password: 0 } },
     {
       $lookup: {
-        from: "grades",
+        from: "marks",
         localField: "_id",
         foreignField: "student",
-        as: "grades",
+        as: "marks",
       },
     },
     {
       $lookup: {
-        from: "classes",
+        from: "grades",
         localField: "_id",
         foreignField: "students",
         as: "classes",
       },
     },
     {
-      $lookup: {
-        from: "badges",
-        localField: "_id",
-        foreignField: "user",
-        as: "badges",
-      },
-    },
-    {
       $addFields: {
-        gradesCount: { $size: "$grades" },
+        averageGrade: { $avg: "$marks.score" },
+        marksCount: { $size: "$marks" },
         classesCount: { $size: "$classes" },
-        badgesCount: { $size: "$badges" },
-        averageGrade: { $avg: "$grades.score" },
       },
     },
-    sortStage,
+    { $sort: { name: 1 } },
     { $skip: skip },
     { $limit: limit },
   ]);
 
-  if (students.length === 0 && page === 1) {
-    return res.status(404).json({ message: "No students found." });
-  }
-
-  const responseData = {
+  const response = {
     students,
     pagination: {
-      currentPage: page,
-      totalPages,
-      totalItems: totalCount,
-      itemsPerPage: limit,
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalItems: total,
     },
-    filters: {
-      name: req.query.name,
-      email: req.query.email,
-      minGrade: req.query.minGrade,
-      maxGrade: req.query.maxGrade,
-    },
-    sorting: {
-      field: sortField,
-      order: req.query.order || "asc",
-    },
-    fields: fields ? Object.keys(fields) : "all",
   };
 
-  cacheService.set ? cacheService.set(cacheKey, responseData, 300) : null;
-
-  res.status(200).json(responseData);
+  cacheService?.set?.(cacheKey, response, 300);
+  res.json(response);
 });
 
-/**
- * @desc    Get single student profile (aggregated)
- * @route   GET /api/students/:id
- * @access  Private (Self or Admin/Teacher)
- */
+/* ======================================================
+   GET SINGLE STUDENT
+====================================================== */
+// @route   GET /api/students/:id
+// @access  Self | Admin | Teacher
 export const getStudentById = asyncHandler(async (req, res) => {
-  const userId = req.params.id;
+  const studentId = req.params.id;
 
-  // Cache key
-  const cacheKey = `student:${userId}`;
-  const cachedData = cacheService.get ? cacheService.get(cacheKey) : null;
-  if (cachedData) {
-    return res.status(200).json(cachedData);
+  if (!mongoose.Types.ObjectId.isValid(studentId)) {
+    res.status(400);
+    throw new Error("Invalid student ID");
   }
 
-  // Authorization: self or admin/teacher
-  if (req.user._id.toString() !== userId && req.user.role !== "admin" && req.user.role !== "teacher") {
+  if (
+    req.user.role === "student" &&
+    req.user._id.toString() !== studentId
+  ) {
     res.status(403);
-    throw new Error("Not authorized to view this profile.");
+    throw new Error("Not authorized");
   }
 
-  const studentAgg = await User.aggregate([
+  const cacheKey = `student:${studentId}`;
+  const cached = cacheService?.get?.(cacheKey);
+  if (cached) return res.json(cached);
+
+  const student = await User.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(userId),
+        _id: new mongoose.Types.ObjectId(studentId),
         role: "student",
       },
     },
     { $project: { password: 0 } },
     {
       $lookup: {
-        from: "grades",
+        from: "marks",
         localField: "_id",
         foreignField: "student",
-        as: "grades",
+        as: "marks",
       },
     },
     {
       $lookup: {
-        from: "classes",
+        from: "grades",
         localField: "_id",
         foreignField: "students",
         as: "classes",
       },
     },
     {
-      $lookup: {
-        from: "badges",
-        localField: "_id",
-        foreignField: "user",
-        as: "badges",
-      },
-    },
-    {
       $addFields: {
-        gradesCount: { $size: "$grades" },
+        averageGrade: { $avg: "$marks.score" },
+        marksCount: { $size: "$marks" },
         classesCount: { $size: "$classes" },
-        badgesCount: { $size: "$badges" },
-        averageGrade: { $avg: "$grades.score" },
       },
     },
-  ]).exec();
+  ]);
 
-  if (studentAgg && studentAgg[0]) {
-    cacheService.set ? cacheService.set(cacheKey, studentAgg[0], 300) : null;
-    res.status(200).json(studentAgg[0]);
-  } else {
+  if (!student[0]) {
     res.status(404);
-    throw new Error("Student not found.");
+    throw new Error("Student not found");
   }
+
+  cacheService?.set?.(cacheKey, student[0], 300);
+  res.json(student[0]);
 });
 
-/**
- * @desc    Update student profile
- * @route   PUT /api/students/:id
- * @access  Private (Self, Admin, or Teacher)
- *
- * Accepts body fields (partial updates allowed):
- *  - name, department, class, year, rollNumber, weakestSubject, note
- *  - modifiedBy (optional) { id, name, role } - but server will fall back to req.user
- */
+/* ======================================================
+   UPDATE STUDENT PROFILE
+====================================================== */
+// @route   PUT /api/students/:id
+// @access  Self | Admin | Teacher
 export const updateStudentProfile = asyncHandler(async (req, res) => {
-  const userId = req.params.id;
-  const {
-    name,
-    department,
-    class: studentClass,
-    year,
-    rollNumber,
-    weakestSubject,
-    // allow note and modifiedBy
-    note,
-    modifiedBy: modifiedByFromClient,
-    // Do NOT allow role changes except via admin routes
-    role: roleFromClient,
-  } = req.body;
+  const studentId = req.params.id;
 
-  const userToUpdate = await User.findById(userId);
+  if (!mongoose.Types.ObjectId.isValid(studentId)) {
+    res.status(400);
+    throw new Error("Invalid student ID");
+  }
 
-  if (!userToUpdate || userToUpdate.role !== "student") {
+  const student = await User.findById(studentId);
+  if (!student || student.role !== "student") {
     res.status(404);
-    throw new Error("Student not found.");
+    throw new Error("Student not found");
   }
 
-  // Authorization: allow self, admin, teacher
-  const requesterId = req.user._id.toString();
-  const requesterRole = req.user.role;
-
-  const isSelf = requesterId === userId;
-  const isAdmin = requesterRole === "admin";
-  const isTeacher = requesterRole === "teacher";
-
-  // Teachers are allowed to update student profile (business rule here).
-  // If you need to restrict teachers to only students they teach, implement that check here.
-  if (!isSelf && !isAdmin && !isTeacher) {
+  if (
+    req.user.role === "student" &&
+    req.user._id.toString() !== studentId
+  ) {
     res.status(403);
-    throw new Error("Not authorized to update this profile.");
+    throw new Error("Not authorized");
   }
 
-  // Prevent role changes unless admin
-  if (roleFromClient && roleFromClient !== "student" && !isAdmin) {
-    res.status(403);
-    throw new Error("Role update restricted.");
-  }
+  const allowedFields = [
+    "name",
+    "department",
+    "year",
+    "rollNumber",
+    "weakestSubject",
+  ];
 
-  // Apply updates (only allowed fields)
-  if (typeof name === "string") userToUpdate.name = name;
-  if (typeof department === "string") userToUpdate.department = department;
-  if (typeof studentClass === "string") userToUpdate.class = studentClass;
-  if (typeof year === "string") userToUpdate.year = year;
-  if (typeof rollNumber === "string") userToUpdate.rollNumber = rollNumber;
-  if (typeof weakestSubject === "string") userToUpdate.weakestSubject = weakestSubject;
-  if (roleFromClient && isAdmin) userToUpdate.role = roleFromClient;
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      student[field] = req.body[field];
+    }
+  });
 
-  // Build lastModified object
-  const modifier = modifiedByFromClient && modifiedByFromClient.id
-    ? {
-        id: modifiedByFromClient.id,
-        name: modifiedByFromClient.name || req.user.name,
-        role: modifiedByFromClient.role || req.user.role,
-      }
-    : {
-        id: requesterId,
-        name: req.user.name,
-        role: requesterRole,
-      };
-
-  userToUpdate.lastModified = {
-    by: modifier,
-    at: new Date().toISOString(),
-    note: note || `Updated by ${modifier.name} (${modifier.role})`,
+  student.lastModified = {
+    by: {
+      id: req.user._id,
+      name: req.user.name,
+      role: req.user.role,
+    },
+    at: new Date(),
   };
 
-  // Save
-  await userToUpdate.save();
+  await student.save();
 
-  // Invalidate cache for this student & student lists
-  safeInvalidateCache(`student:${userId}`);
-  safeInvalidateCache("students:all"); // generic key if used
-  // if cache keys are generated differently, you may want to invalidate more keys based on your cacheService implementation
+  safeInvalidateCache(`student:${studentId}`);
+  safeInvalidateCache("students:*");
 
-  // Return aggregated updated student (same shape as GET)
-  const studentAgg = await User.aggregate([
-    {
-      $match: {
-        _id: new mongoose.Types.ObjectId(userId),
-        role: "student",
-      },
-    },
-    { $project: { password: 0 } },
-    {
-      $lookup: {
-        from: "grades",
-        localField: "_id",
-        foreignField: "student",
-        as: "grades",
-      },
-    },
-    {
-      $lookup: {
-        from: "classes",
-        localField: "_id",
-        foreignField: "students",
-        as: "classes",
-      },
-    },
-    {
-      $lookup: {
-        from: "badges",
-        localField: "_id",
-        foreignField: "user",
-        as: "badges",
-      },
-    },
-    {
-      $addFields: {
-        gradesCount: { $size: "$grades" },
-        classesCount: { $size: "$classes" },
-        badgesCount: { $size: "$badges" },
-        averageGrade: { $avg: "$grades.score" },
-      },
-    },
-  ]).exec();
-
-  if (studentAgg && studentAgg[0]) {
-    // Re-cache new data for 5 minutes
-    cacheService.set ? cacheService.set(`student:${userId}`, studentAgg[0], 300) : null;
-    res.status(200).json(studentAgg[0]);
-  } else {
-    res.status(500);
-    throw new Error("Student updated but failed to return aggregated data.");
-  }
+  res.json({
+    message: "Student profile updated",
+  });
 });
 
-/**
- * @desc    Delete student profile
- * @route   DELETE /api/students/:id
- * @access  Private (Admin only)
- */
+/* ======================================================
+   DELETE STUDENT
+====================================================== */
+// @route   DELETE /api/students/:id
+// @access  Admin only
 export const deleteStudent = asyncHandler(async (req, res) => {
-  const userId = req.params.id;
-
-  const studentToDelete = await User.findById(userId);
-
-  if (!studentToDelete || studentToDelete.role !== "student") {
-    res.status(404);
-    throw new Error("Student not found.");
-  }
+  const studentId = req.params.id;
 
   if (req.user.role !== "admin") {
     res.status(403);
-    throw new Error("Only administrators can delete student profiles.");
+    throw new Error("Admin only");
   }
 
-  await User.deleteOne({ _id: userId });
+  if (!mongoose.Types.ObjectId.isValid(studentId)) {
+    res.status(400);
+    throw new Error("Invalid student ID");
+  }
 
-  // Invalidate caches
-  safeInvalidateCache(`student:${userId}`);
-  safeInvalidateCache("students:all");
+  const student = await User.findById(studentId);
+  if (!student || student.role !== "student") {
+    res.status(404);
+    throw new Error("Student not found");
+  }
 
-  res.status(200).json({
-    message: `Student with ID ${userId} deleted successfully.`,
-  });
+  await student.deleteOne();
+
+  safeInvalidateCache(`student:${studentId}`);
+  safeInvalidateCache("students:*");
+
+  res.json({ message: "Student deleted successfully" });
 });

@@ -1,44 +1,42 @@
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 /**
- * Generates a JWT and sets it as an HttpOnly cookie on the response object.
- *
- * @param {object} res - The Express response object.
- * @param {string} userId - The unique identifier for the user (e.g., MongoDB _id).
- * @param {string} role - The user's role ('student', 'teacher', 'admin').
+ * Generates JWT and sets HttpOnly cookie
+ * @param {object} res - Express response
+ * @param {string} userId - MongoDB _id
  */
-export const generateTokenAndSetCookie = (res, userId, role) => {
-    // process.env.JWT_SECRET must be defined in your .env file
-    const token = jwt.sign(
-        { userId, role }, // Payload
-        process.env.JWT_SECRET, // Secret key
-        {
-            expiresIn: '30d', // Token expiration time
-        }
-    );
+export const generateTokenAndSetCookie = (res, userId) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET not defined in environment");
+  }
 
-    // Set the token as an HTTP-only cookie
-    res.cookie('jwt', token, {
-        httpOnly: true, // Prevents client-side JavaScript access
-        secure: process.env.NODE_ENV !== 'development', // Use secure cookies in production
-        sameSite: 'strict', // Prevents CSRF attacks
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-    });
+  const token = jwt.sign(
+    { id: userId }, // ✅ FIXED PAYLOAD
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "30d",
+    }
+  );
+
+  res.cookie("jwt", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  return token;
 };
 
 /**
- * Removes the JWT cookie from the response object.
- *
- * @param {object} res - The Express response object.
+ * Clears JWT cookie
  */
 export const clearTokenCookie = (res) => {
-    res.cookie('jwt', '', {
-        httpOnly: true,
-        expires: new Date(0), // Set expiration to the past to delete the cookie
-    });
+  res.cookie("jwt", "", {
+    httpOnly: true,
+    expires: new Date(0),
+  });
 };
-
-// No need for module.exports in ESM

@@ -1,51 +1,72 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const BadgeSchema = mongoose.Schema({
-    // Name of the badge (e.g., "Perfect Attendance", "Honor Roll")
-    name: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-    },
-    // Description of the criteria for earning the badge
-    description: {
-        type: String,
-        required: true,
-    },
-    // The specific user who earned the badge
+const badgeSchema = new mongoose.Schema(
+  {
     user: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'User', // Links to the User model (the student/recipient)
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
-    // The date the badge was awarded
-    awardedOn: {
-        type: Date,
-        default: Date.now,
+
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
     },
-    // Optional: The specific subject or area the badge relates to
-    subject: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: false,
-        ref: 'Subject',
+
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 300,
     },
-    // Optional: The awarding entity (e.g., 'Admin', 'Teacher', 'System')
+
+    type: {
+      type: String,
+      enum: [
+        "attendance",
+        "performance",
+        "improvement",
+        "discipline",
+        "participation",
+        "special",
+      ],
+      default: "performance",
+    },
+
+    icon: {
+      type: String,
+      default: "🏅", // can be emoji or icon key
+    },
+
     awardedBy: {
-        type: String,
-        required: false,
-        default: 'System',
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", // teacher or admin
+      required: true,
     },
-}, {
-    timestamps: true, // Includes createdAt and updatedAt
-});
 
-// Optional: Add a compound index to prevent the same badge from being awarded 
-// to the same user on the same subject on the same day (or simply use the name/user combination)
-BadgeSchema.index({ name: 1, user: 1 }, { unique: true });
+    awardedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
+/* ======================================================
+   OPTIONAL SAFETY: PREVENT DUPLICATE BADGES
+====================================================== */
+/**
+ * Prevent same badge title being awarded twice
+ * to the same user.
+ */
+badgeSchema.index(
+  { user: 1, title: 1 },
+  { unique: true }
+);
 
-const Badge = mongoose.model('Badge', BadgeSchema);
-
-// CRITICAL FIX: Use ES Module default export
+const Badge = mongoose.model("Badge", badgeSchema);
 export default Badge;

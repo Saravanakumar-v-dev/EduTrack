@@ -1,0 +1,26 @@
+node_modules/
+.env
+logs/
+# client artifacts
+client/node_modules/
+client/build/
+client/.env.local
+client/.env.development.local
+client/.env.test.local
+
+# build / coverage
+build/
+dist/
+coverage/
+
+# logs and debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
