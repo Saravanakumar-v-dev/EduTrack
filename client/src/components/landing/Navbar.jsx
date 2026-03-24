@@ -184,78 +184,118 @@ const Navbar = () => {
                 </motion.button>
             </div>
 
-            {/* Mobile Menu */}
+            {/* Mobile Menu Overlay */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        style={{
-                            backgroundColor: 'white',
-                            borderTop: '1px solid var(--color-gray-200)',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <div
-                            className="container"
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileMenuOpen(false)}
                             style={{
-                                padding: '1.5rem var(--container-padding)',
+                                position: 'fixed',
+                                inset: 0,
+                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                zIndex: 1001,
+                            }}
+                        />
+                        
+                        {/* Sidebar */}
+                        <motion.div
+                            initial={{ x: '-100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                bottom: 0,
+                                width: '280px',
+                                backgroundColor: 'white',
+                                zIndex: 1002,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
+                            }}
+                        >
+                            {/* Sidebar Header */}
+                            <div style={{
+                                padding: '1.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderBottom: '1px solid var(--color-gray-100)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{
+                                        width: '32px', height: '32px',
+                                        borderRadius: 'var(--radius-md)',
+                                        background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        color: 'white'
+                                    }}>
+                                        <GraduationCap size={20} />
+                                    </div>
+                                    <span style={{ fontWeight: 700, color: 'var(--color-gray-900)' }}>EduTrack</span>
+                                </div>
+                                <button
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    style={{
+                                        background: 'transparent', border: 'none',
+                                        color: 'var(--color-gray-500)', cursor: 'pointer',
+                                    }}
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            {/* Links */}
+                            <div style={{
+                                padding: '1.5rem',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '1rem',
-                            }}
-                        >
-                            {navLinks.map((link) => (
-                                <motion.a
-                                    key={link.name}
-                                    href={link.href}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        scrollToSection(link.href);
-                                    }}
-                                    whileTap={{ scale: 0.95 }}
-                                    style={{
-                                        fontSize: 'var(--text-lg)',
-                                        fontWeight: 600,
-                                        color: 'var(--color-gray-700)',
-                                        textDecoration: 'none',
-                                        padding: '0.75rem 0',
-                                        borderBottom: '1px solid var(--color-gray-100)',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    {link.name}
-                                </motion.a>
-                            ))}
+                                flex: 1,
+                                overflowY: 'auto',
+                            }}>
+                                {navLinks.map((link) => (
+                                    <motion.a
+                                        key={link.name}
+                                        href={link.href}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            scrollToSection(link.href);
+                                        }}
+                                        whileTap={{ scale: 0.95 }}
+                                        style={{
+                                            fontSize: 'var(--text-lg)',
+                                            fontWeight: 600,
+                                            color: 'var(--color-gray-700)',
+                                            textDecoration: 'none',
+                                            padding: '0.75rem 0',
+                                            borderBottom: '1px solid var(--color-gray-100)',
+                                        }}
+                                    >
+                                        {link.name}
+                                    </motion.a>
+                                ))}
 
-                            <motion.button
-                                className="btn btn-accent"
-                                onClick={handleLoginClick}
-                                whileTap={{ scale: 0.95 }}
-                                style={{
-                                    marginTop: '1rem',
-                                    width: '100%',
-                                }}
-                            >
-                                🔐 EduTrack Login
-                            </motion.button>
-                        </div>
-                    </motion.div>
+                                <motion.button
+                                    className="btn btn-accent"
+                                    onClick={handleLoginClick}
+                                    whileTap={{ scale: 0.95 }}
+                                    style={{ marginTop: '1rem', width: '100%' }}
+                                >
+                                    🔐 EduTrack Login
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
-
-            <style jsx>{`
-        @media (min-width: 768px) {
-          .desktop-nav {
-            display: flex !important;
-          }
-          .mobile-menu-btn {
-            display: none !important;
-          }
-        }
-      `}</style>
         </motion.nav>
     );
 };

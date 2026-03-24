@@ -403,3 +403,21 @@ img {
     transform: translate(24px, -50%);
   }
 }
+
+/* ============ NAVBAR MOBILITY ============ */
+.desktop-nav {
+  display: none !important;
+}
+
+.mobile-menu-btn {
+  display: flex !important;
+}
+
+@media (min-width: 768px) {
+  .desktop-nav {
+    display: flex !important;
+  }
+  .mobile-menu-btn {
+    display: none !important;
+  }
+}
