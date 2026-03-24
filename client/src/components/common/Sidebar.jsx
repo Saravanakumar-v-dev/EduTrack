@@ -11,9 +11,10 @@ import {
   ChevronRight,
   Sparkles,
   ClipboardList,
+  X,
 } from "lucide-react";
 
-const Sidebar = ({ logout }) => {
+const Sidebar = ({ logout, onClose }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const role = user?.role || "student";
@@ -55,10 +56,10 @@ const Sidebar = ({ logout }) => {
     <motion.aside
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen hidden md:flex flex-col shadow-xl sticky top-0"
+      className="w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen flex flex-col shadow-xl"
     >
       {/* HEADER - Fixed */}
-      <div className={`p-6 bg-gradient-to-br ${config.gradient} flex-shrink-0`}>
+      <div className={`p-6 bg-gradient-to-br ${config.gradient} flex-shrink-0 flex items-center justify-between`}>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
             <Sparkles className="text-white" size={24} />
@@ -68,6 +69,9 @@ const Sidebar = ({ logout }) => {
             <p className="text-white/80 text-sm">{config.title}</p>
           </div>
         </div>
+        <button onClick={onClose} className="md:hidden text-white/80 hover:text-white p-1 -mr-2">
+          <X size={24} />
+        </button>
       </div>
 
       {/* USER CARD - Fixed */}
@@ -100,6 +104,7 @@ const Sidebar = ({ logout }) => {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={onClose}
             className={({ isActive }) =>
               `group flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
                 ? `bg-gradient-to-r ${config.gradient} text-white shadow-lg shadow-${config.accent}-500/25`
@@ -133,6 +138,7 @@ const Sidebar = ({ logout }) => {
         {/* Settings */}
         <NavLink
           to="/settings"
+          onClick={onClose}
           className={({ isActive }) =>
             `group flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
               ? `bg-gradient-to-r ${config.gradient} text-white shadow-lg`
