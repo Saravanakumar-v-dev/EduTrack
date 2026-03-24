@@ -45,22 +45,11 @@ const Navbar = () => {
             initial={{ y: -100 }}
             animate={{ y: 0 }}
             transition={{ duration: 0.5 }}
-            className={`navbar ${isScrolled ? 'scrolled' : ''}`}
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 1000,
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                backgroundColor: isScrolled
-                    ? 'rgba(255, 255, 255, 0.95)'
-                    : 'transparent',
-                backdropFilter: isScrolled ? 'blur(10px)' : 'none',
-                boxShadow: isScrolled
-                    ? '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                    : 'none',
-            }}
+            className={`fixed top-0 left-0 right-0 w-full z-[1000] transition-all duration-300 ease-in-out ${
+                isScrolled 
+                    ? 'bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg shadow-md py-1' 
+                    : 'bg-transparent py-3'
+            }`}
         >
             <div className="container" style={{
                 display: 'flex',
@@ -95,18 +84,16 @@ const Navbar = () => {
                         <GraduationCap size={28} />
                     </div>
                     <div>
-                        <h2 style={{
+                        <h2 className="text-gray-900 dark:text-white" style={{
                             fontSize: 'var(--text-xl)',
                             fontWeight: 700,
-                            color: 'var(--color-gray-900)',
                             lineHeight: 1,
                             marginBottom: '0.25rem',
                         }}>
                             EduTrack School
                         </h2>
-                        <p style={{
+                        <p className="text-gray-600 dark:text-gray-400" style={{
                             fontSize: 'var(--text-xs)',
-                            color: 'var(--color-gray-600)',
                             lineHeight: 1,
                             margin: 0,
                         }}>
@@ -136,16 +123,13 @@ const Navbar = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
                             whileHover={{ y: -2 }}
+                            className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                             style={{
                                 fontSize: 'var(--text-base)',
                                 fontWeight: 600,
-                                color: 'var(--color-gray-700)',
                                 textDecoration: 'none',
-                                transition: 'color var(--transition-base)',
                                 cursor: 'pointer',
                             }}
-                            onMouseEnter={(e) => e.target.style.color = 'var(--color-primary)'}
-                            onMouseLeave={(e) => e.target.style.color = 'var(--color-gray-700)'}
                         >
                             {link.name}
                         </motion.a>
@@ -166,7 +150,7 @@ const Navbar = () => {
 
                 {/* Mobile Menu Button */}
                 <motion.button
-                    className="mobile-menu-btn"
+                    className="mobile-menu-btn text-gray-700 dark:text-gray-300 hover:text-indigo-600 transition-colors"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     whileTap={{ scale: 0.9 }}
                     style={{
@@ -177,7 +161,6 @@ const Navbar = () => {
                         border: 'none',
                         cursor: 'pointer',
                         padding: '0.5rem',
-                        color: 'var(--color-gray-700)',
                     }}
                 >
                     {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
@@ -204,30 +187,29 @@ const Navbar = () => {
                         
                         {/* Sidebar */}
                         <motion.div
-                            initial={{ x: '-100%' }}
+                            initial={{ x: '100%' }}
                             animate={{ x: 0 }}
-                            exit={{ x: '-100%' }}
+                            exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800"
                             style={{
                                 position: 'fixed',
                                 top: 0,
-                                left: 0,
+                                right: 0,
                                 bottom: 0,
                                 width: '280px',
-                                backgroundColor: 'white',
                                 zIndex: 1002,
                                 display: 'flex',
                                 flexDirection: 'column',
-                                boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
+                                boxShadow: '-2px 0 10px rgba(0,0,0,0.1)',
                             }}
                         >
                             {/* Sidebar Header */}
-                            <div style={{
+                            <div className="border-b border-gray-100 dark:border-gray-800" style={{
                                 padding: '1.5rem',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                borderBottom: '1px solid var(--color-gray-100)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <div style={{
@@ -239,13 +221,13 @@ const Navbar = () => {
                                     }}>
                                         <GraduationCap size={20} />
                                     </div>
-                                    <span style={{ fontWeight: 700, color: 'var(--color-gray-900)' }}>EduTrack</span>
+                                    <span className="text-gray-900 dark:text-white" style={{ fontWeight: 700 }}>EduTrack</span>
                                 </div>
                                 <button
                                     onClick={() => setIsMobileMenuOpen(false)}
+                                    className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white"
                                     style={{
-                                        background: 'transparent', border: 'none',
-                                        color: 'var(--color-gray-500)', cursor: 'pointer',
+                                        background: 'transparent', border: 'none', cursor: 'pointer',
                                     }}
                                 >
                                     <X size={24} />
@@ -270,13 +252,12 @@ const Navbar = () => {
                                             scrollToSection(link.href);
                                         }}
                                         whileTap={{ scale: 0.95 }}
+                                        className="text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"
                                         style={{
                                             fontSize: 'var(--text-lg)',
                                             fontWeight: 600,
-                                            color: 'var(--color-gray-700)',
                                             textDecoration: 'none',
                                             padding: '0.75rem 0',
-                                            borderBottom: '1px solid var(--color-gray-100)',
                                         }}
                                     >
                                         {link.name}
