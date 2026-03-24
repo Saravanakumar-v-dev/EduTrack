@@ -41,17 +41,18 @@ const Navbar = () => {
     };
 
     return (
-        <motion.nav
-            initial={{ y: -100 }}
-            animate={{ y: 0 }}
-            transition={{ duration: 0.5 }}
-            className={`fixed top-0 left-0 right-0 w-full z-[1000] transition-all duration-300 ease-in-out ${
-                isScrolled 
-                    ? 'bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg shadow-md py-1' 
-                    : 'bg-transparent py-3'
-            }`}
-        >
-            <div className="container" style={{
+        <div className="fixed top-0 left-0 right-0 w-full z-[1000]">
+            <motion.nav
+                initial={{ y: -100 }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.5 }}
+                className={`w-full transition-all duration-300 ease-in-out ${
+                    isScrolled 
+                        ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg shadow-md py-2' 
+                        : 'bg-transparent py-4'
+                }`}
+            >
+                <div className="container" style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -166,6 +167,7 @@ const Navbar = () => {
                     {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
                 </motion.button>
             </div>
+        </motion.nav>
 
             {/* Mobile Menu Overlay */}
             <AnimatePresence>
@@ -277,7 +279,7 @@ const Navbar = () => {
                     </>
                 )}
             </AnimatePresence>
-        </motion.nav>
+        </div>
     );
 };
 
