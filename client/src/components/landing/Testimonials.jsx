@@ -225,16 +225,15 @@ const Testimonials = () => {
                     {/* Navigation buttons */}
                     <div style={{
                         position: 'absolute',
-                        top: '50%',
+                        top: '0',
                         left: 0,
                         right: 0,
-                        transform: 'translateY(-50%)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
+                        bottom: 0,
                         pointerEvents: 'none',
                         zIndex: 2,
                     }}>
                         <motion.button
+                            className="carousel-btn carousel-btn-left"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => paginate(-1)}
@@ -251,12 +250,12 @@ const Testimonials = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'var(--color-primary)',
-                                transform: 'translateX(-24px)',
                             }}
                         >
                             <ChevronLeft size={24} />
                         </motion.button>
                         <motion.button
+                            className="carousel-btn carousel-btn-right"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => paginate(1)}
@@ -273,7 +272,6 @@ const Testimonials = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'var(--color-primary)',
-                                transform: 'translateX(24px)',
                             }}
                         >
                             <ChevronRight size={24} />

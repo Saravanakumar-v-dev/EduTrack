@@ -97,15 +97,13 @@ const Events = () => {
                                 borderRadius: 'var(--radius-xl)',
                                 padding: 'var(--space-6)',
                                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                display: 'flex',
-                                gap: 'var(--space-6)',
-                                alignItems: 'flex-start',
                                 cursor: 'pointer',
                                 transition: 'all var(--transition-base)',
                                 position: 'relative',
                                 overflow: 'hidden',
                                 borderLeft: `4px solid ${event.color}`,
                             }}
+                            className="event-card"
                         >
                             {/* Icon */}
                             <div style={{

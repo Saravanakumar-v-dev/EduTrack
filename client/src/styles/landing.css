@@ -363,3 +363,43 @@ img {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ============ COMPONENT SPECIFIC ============ */
+.event-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  align-items: flex-start;
+}
+
+@media (min-width: 640px) {
+  .event-card {
+    flex-direction: row;
+  }
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.carousel-btn-left {
+  left: 0;
+  transform: translate(-10px, -50%);
+}
+
+.carousel-btn-right {
+  right: 0;
+  transform: translate(10px, -50%);
+}
+
+@media (min-width: 768px) {
+  .carousel-btn-left {
+    transform: translate(-24px, -50%);
+  }
+  .carousel-btn-right {
+    transform: translate(24px, -50%);
+  }
+}

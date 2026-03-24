@@ -168,7 +168,7 @@ const Hero = () => {
                         style={{
                             marginTop: '4rem',
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
                             gap: '2rem',
                             maxWidth: '800px',
                             margin: '4rem auto 0',

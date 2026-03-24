@@ -94,7 +94,7 @@ const Dashboard = () => {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="bg-indigo-50 dark:bg-indigo-950 p-6 rounded-2xl shadow-xl border border-indigo-200 dark:border-indigo-700"
             >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">
                             Ready to Upload New Data?
