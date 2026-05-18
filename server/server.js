@@ -43,7 +43,8 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
   "http://127.0.0.1:5176",
-  process.env.FRONTEND_URL,      // Production frontend
+  "https://edu-track-omega.vercel.app", // HARDCODED PRODUCTION FRONTEND (Bypasses Render env issues)
+  process.env.FRONTEND_URL,      // Dynamic fallback
 ].filter(Boolean);
 
 app.use(
