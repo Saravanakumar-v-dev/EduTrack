@@ -16,7 +16,8 @@ const AdminPanel = () => {
   const fetchUsers = async () => {
     try {
       const res = await axios.get("/admin/users");
-      setUsers(res.data);
+      // The backend returns { success: true, data: [...] }
+      setUsers(res.data.data || res.data || []);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load users");
@@ -95,8 +96,10 @@ const AdminPanel = () => {
 
   // Filter users based on search and role
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const userName = user.name || "";
+    const userEmail = user.email || "";
+    const matchesSearch = userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      userEmail.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = filterRole === "all" || user.role === filterRole;
     return matchesSearch && matchesRole;
   });
