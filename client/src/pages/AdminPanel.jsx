@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "../api/api";
 import { FaUserPlus, FaTrashAlt, FaEdit, FaEye, FaEyeSlash, FaSearch, FaFilter } from "react-icons/fa";
 import { toast } from "react-hot-toast";
-import { registerWithEmail } from "../config/firebase";
 
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
@@ -28,7 +27,7 @@ const AdminPanel = () => {
     fetchUsers();
   }, []);
 
-  // ✅ Add new user with Firebase authentication
+  // ✅ Add new user (Server-side Firebase + MongoDB creation)
   const handleAddUser = async (e) => {
     e.preventDefault();
     if (!newUser.name || !newUser.email || !newUser.password) {
@@ -42,35 +41,30 @@ const AdminPanel = () => {
     try {
       setLoading(true);
 
-      // Create Firebase user first
-      const firebaseUser = await registerWithEmail(newUser.email, newUser.password);
-
-      // Then create user in MongoDB
+      // Server handles BOTH Firebase Auth creation + MongoDB record
+      // Admin session stays intact (no client-side Firebase auth change)
       await axios.post("/admin/users", {
         name: newUser.name,
         email: newUser.email,
         password: newUser.password,
         role: newUser.role,
-        firebaseUid: firebaseUser.uid,
       });
 
-      toast.success("User created successfully with authentication!");
+      toast.success("User created successfully with Firebase authentication!");
       setNewUser({ name: "", email: "", password: "", role: "student" });
       fetchUsers();
     } catch (err) {
       console.error("Error creating user:", err);
-      const errorMessage = err.code === "auth/email-already-in-use"
-        ? "Email already registered"
-        : err.response?.data?.message || "Error adding user";
+      const errorMessage = err.response?.data?.message || "Error adding user";
       toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Delete user
+  // ✅ Delete user (also removes from Firebase Auth)
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    if (!window.confirm("Are you sure you want to delete this user?\nThis will also remove their Firebase authentication account.")) return;
     try {
       await axios.delete(`/admin/users/${id}`);
       toast.success("User deleted successfully");
@@ -114,8 +108,13 @@ const AdminPanel = () => {
       {/* Add New User */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
         <h3 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-white">
-          <FaUserPlus className="text-blue-600" /> {editingUser ? "Edit User" : "Add New User"}
+          <FaUserPlus className="text-blue-600" /> {editingUser ? "Edit User" : "Register New User"}
         </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          {editingUser
+            ? "Update user details below."
+            : "Only admins can register new users. A Firebase authentication account will be created automatically."}
+        </p>
         <form
           onSubmit={editingUser ? handleUpdate : handleAddUser}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4"
@@ -188,7 +187,7 @@ const AdminPanel = () => {
                 : "bg-blue-600 hover:bg-blue-700"
                 }`}
             >
-              {loading ? "Creating..." : editingUser ? "Update User" : "Add User"}
+              {loading ? "Creating..." : editingUser ? "Update User" : "Register User"}
             </button>
 
             {editingUser && (
@@ -246,6 +245,7 @@ const AdminPanel = () => {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Email</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Role</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Auth</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Status</th>
                 <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">Actions</th>
               </tr>
@@ -262,6 +262,14 @@ const AdminPanel = () => {
                             'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         }`}>
                         {user.role}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.firebaseUid
+                          ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                        }`}>
+                        {user.firebaseUid ? '🔥 Firebase' : '📧 Email Only'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -293,7 +301,7 @@ const AdminPanel = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="text-center p-8 text-gray-500 dark:text-gray-400">
+                  <td colSpan="6" className="text-center p-8 text-gray-500 dark:text-gray-400">
                     No users found
                   </td>
                 </tr>

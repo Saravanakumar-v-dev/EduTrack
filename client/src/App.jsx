@@ -17,6 +17,7 @@ import AdminProfile from "./pages/admin/AdminProfile.jsx";
 import Settings from "./pages/settings/Settings.jsx";
 import Assignments from "./pages/assignments/Assignments.jsx";
 
+import AdminPanel from "./pages/AdminPanel.jsx";
 import AccessDenied from "./pages/AccessDenied.jsx";
 import SessionExpired from "./pages/SessionExpired.jsx";
 import Maintenance from "./pages/Maintenance.jsx";
@@ -174,6 +175,11 @@ const App = () => {
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/assignments" element={<Assignments />} />
+      </Route>
+
+      {/* ================= ADMIN ONLY ================= */}
+      <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+        <Route path="/admin-panel" element={<AdminPanel />} />
       </Route>
 
       {/* ================= PROFILE (All Roles) ================= */}

@@ -3,9 +3,6 @@ import {
    authUser,
    logoutUser,
    getUserProfile,
-   requestRegisterOtp,
-   verifyAndRegisterUser,
-   registerWithFirebase,
    loginWithFirebase,
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -16,12 +13,8 @@ const router = express.Router();
 router.post("/login", authUser);
 router.post("/logout", protect, logoutUser);
 
-/* ================= REGISTER (Email OTP - Legacy) ================= */
-router.post("/request-register-otp", requestRegisterOtp);
-router.post("/verify-register", verifyAndRegisterUser);
-
-/* ================= FIREBASE AUTH (Phone & Email) ================= */
-router.post("/register-firebase", registerWithFirebase);
+/* ================= FIREBASE AUTH (Login Only) ================= */
+// Registration is now admin-only via /api/admin/users
 router.post("/login-firebase", loginWithFirebase);
 
 /* ================= PROFILE ================= */

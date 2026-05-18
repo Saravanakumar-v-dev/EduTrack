@@ -149,18 +149,20 @@ const AuthPage = () => {
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
               style={{
-                width: "64px",
-                height: "64px",
+                width: "80px",
+                height: "80px",
                 margin: "0 auto 1rem",
                 borderRadius: "1rem",
-                background: "linear-gradient(135deg, #4F46E5, #10B981)",
+                overflow: "hidden",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "white",
+                backgroundColor: "white",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                padding: "8px"
               }}
             >
-              <GraduationCap size={36} />
+              <img src="/logo.png" alt="EduTrack Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </motion.div>
 
             <motion.h1

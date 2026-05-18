@@ -75,14 +75,15 @@ const Navbar = () => {
                             width: '48px',
                             height: '48px',
                             borderRadius: 'var(--radius-lg)',
-                            background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+                            overflow: 'hidden',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'white',
+                            backgroundColor: 'white',
+                            padding: '4px'
                         }}
                     >
-                        <GraduationCap size={28} />
+                        <img src="/logo.png" alt="EduTrack Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div>
                         <h2 className="text-gray-900 dark:text-white" style={{
@@ -217,11 +218,12 @@ const Navbar = () => {
                                     <div style={{
                                         width: '32px', height: '32px',
                                         borderRadius: 'var(--radius-md)',
-                                        background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+                                        overflow: 'hidden',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'white'
+                                        backgroundColor: 'white',
+                                        padding: '2px'
                                     }}>
-                                        <GraduationCap size={20} />
+                                        <img src="/logo.png" alt="EduTrack Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                     </div>
                                     <span className="text-gray-900 dark:text-white" style={{ fontWeight: 700 }}>EduTrack</span>
                                 </div>

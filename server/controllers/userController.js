@@ -2,12 +2,13 @@
 import asyncHandler from "express-async-handler";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import admin from "firebase-admin";
 import User from "../models/User.js";
 
 /* ======================================================
-   CREATE USER (ADMIN)
+   CREATE USER (ADMIN) - Firebase + MongoDB
 ====================================================== */
-// @route   POST /api/users
+// @route   POST /api/admin/users
 // @access  Admin only
 export const createUser = asyncHandler(async (req, res) => {
   if (req.user.role !== "admin") {
@@ -17,33 +18,65 @@ export const createUser = asyncHandler(async (req, res) => {
 
   const { name, email, phone, role, password } = req.body;
 
-  if (!name || !email) {
+  if (!name || !email || !password) {
     res.status(400);
-    throw new Error("Name and email are required");
+    throw new Error("Name, email, and password are required");
   }
 
-  // Check if user already exists
+  if (password.length < 6) {
+    res.status(400);
+    throw new Error("Password must be at least 6 characters");
+  }
+
+  // Check if user already exists in MongoDB
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     res.status(400);
     throw new Error("User with this email already exists");
   }
 
-  // Create user with default password if not provided
-  const defaultPassword = password || "EduTrack@123";
+  // Step 1: Create Firebase Auth user (server-side via Admin SDK)
+  let firebaseUser;
+  try {
+    // Check if user already exists in Firebase
+    try {
+      firebaseUser = await admin.auth().getUserByEmail(email);
+      console.log(`⚠️  Firebase user already exists: ${email} (UID: ${firebaseUser.uid})`);
+    } catch (err) {
+      if (err.code === "auth/user-not-found") {
+        // Create new Firebase Auth user
+        firebaseUser = await admin.auth().createUser({
+          email,
+          password,
+          displayName: name,
+          emailVerified: true, // Admin-created users are pre-verified
+          ...(phone && { phoneNumber: phone }),
+        });
+        console.log(`✅ Firebase user created: ${email} (UID: ${firebaseUser.uid})`);
+      } else {
+        throw err;
+      }
+    }
+  } catch (error) {
+    console.error("❌ Firebase user creation failed:", error.message);
+    res.status(500);
+    throw new Error(`Firebase error: ${error.message}`);
+  }
 
+  // Step 2: Create MongoDB user with firebaseUid
   const user = await User.create({
     name,
     email,
     phone,
     role: role || "student",
-    password: defaultPassword,
+    password,
+    firebaseUid: firebaseUser.uid,
     isVerified: true, // Admin-created users are auto-verified
   });
 
   res.status(201).json({
     success: true,
-    message: "User created successfully",
+    message: "User created successfully with Firebase authentication",
     data: {
       _id: user._id,
       name: user.name,
@@ -51,6 +84,7 @@ export const createUser = asyncHandler(async (req, res) => {
       phone: user.phone,
       role: user.role,
       isVerified: user.isVerified,
+      firebaseUid: user.firebaseUid,
       createdAt: user.createdAt,
     },
   });
@@ -239,6 +273,17 @@ export const deleteUser = asyncHandler(async (req, res) => {
     if (adminCount <= 1) {
       res.status(400);
       throw new Error("Cannot delete the last admin");
+    }
+  }
+
+  // Delete from Firebase Auth if user has a firebaseUid
+  if (user.firebaseUid) {
+    try {
+      await admin.auth().deleteUser(user.firebaseUid);
+      console.log(`✅ Firebase user deleted: ${user.email} (UID: ${user.firebaseUid})`);
+    } catch (err) {
+      // Don't block MongoDB deletion if Firebase delete fails
+      console.error(`⚠️  Firebase delete failed for ${user.email}:`, err.message);
     }
   }
 
