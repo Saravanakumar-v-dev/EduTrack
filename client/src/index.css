@@ -1,9 +1,9 @@
 /* =========================================================
-    🌟 EduTrack Global Styles
+    🌟 EduTrack Global Styles — Premium Edition
     ========================================================= */
 
-/* ✅ 1. Font import must always come FIRST */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+/* ✅ 1. Premium Font Imports (Inter + Outfit for headings) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 /* ✅ 2. Tailwind layers */
 @tailwind base;
@@ -15,74 +15,97 @@
     ========================================================= */
 
 /* --- 1. DEFINE CSS VARIABLES FOR THEME SWAP --- */
-/* These variables control the body's main background and text color */
-
 /* Light Mode Variables (Default) */
 :root {
-    --bg-start: #f8fafc; /* slate-50 */
-    --bg-mid: #ffffff;   /* white */
-    --bg-end: #f3f4f6;   /* gray-100 */
-    --text-color: #374151; /* gray-800 */
+    --bg-start: #f8fafc;
+    --bg-mid: #ffffff;
+    --bg-end: #f3f4f6;
+    --text-color: #374151;
+    --font-display: 'Outfit', 'Inter', sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* Dark Mode Variables (Override when html.dark is active) */
+/* Dark Mode Variables */
 html.dark {
-    --bg-start: #111827; /* gray-900 */
-    --bg-mid: #1f2937;   /* gray-800 */
-    --bg-end: #111827;   /* gray-900 */
-    --text-color: #f3f4f6; /* gray-100 */
+    --bg-start: #0f172a;
+    --bg-mid: #1e293b;
+    --bg-end: #0f172a;
+    --text-color: #f1f5f9;
 }
 
 /* --- 2. APPLY VARIABLES TO HTML AND BODY --- */
 html {
     scroll-behavior: smooth;
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     @apply transition-colors duration-500 ease-in-out;
 }
 
 body {
-    /* Apply the gradient and text using the dynamic CSS variables */
     background: linear-gradient(to bottom, var(--bg-start), var(--bg-mid), var(--bg-end));
     color: var(--text-color);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     @apply min-h-screen transition-colors duration-500 ease-in-out;
+}
+
+/* =========================================================
+    ✨ Premium Typography
+    ========================================================= */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
 }
 
 /* =========================================================
     🧭 Smooth Animations & Transitions
     ========================================================= */
 .fade-in {
-    animation: fadeIn 0.6s ease-out forwards;
+    animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     will-change: transform, opacity;
 }
 
 .slide-up {
-    animation: slideUp 0.5s ease-out forwards;
+    animation: slideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     will-change: transform, opacity;
 }
 
-/* Optimize animations with will-change and transform-gpu */
-.fade-in, .slide-up {
+.slide-in-left {
+    animation: slideInLeft 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     will-change: transform, opacity;
-    transform: translateZ(0); /* Force GPU acceleration */
-    backface-visibility: hidden; 
-    perspective: 1000px; 
+}
+
+.slide-in-right {
+    animation: slideInRight 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: transform, opacity;
+}
+
+.scale-in {
+    animation: scaleIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: transform, opacity;
+}
+
+/* Optimize animations with GPU acceleration */
+.fade-in, .slide-up, .slide-in-left, .slide-in-right, .scale-in {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(8px) translateZ(0);
+        transform: translateY(10px);
     }
     to {
         opacity: 1;
-        transform: translateY(0) translateZ(0);
         transform: translateY(0);
     }
 }
 
 @keyframes slideUp {
     from {
-        transform: translateY(20px);
+        transform: translateY(24px);
         opacity: 0;
     }
     to {
@@ -91,12 +114,66 @@ body {
     }
 }
 
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
 /* =========================================================
     🌈 Custom Scrollbar (Modern Minimal Style)
     ========================================================= */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -104,13 +181,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    /* Apply a semi-transparent slate color */
-    background-color: rgba(100, 116, 139, 0.5); 
-    border-radius: 10px;
+    background-color: rgba(100, 116, 139, 0.35);
+    border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(71, 85, 105, 0.7);
+    background-color: rgba(71, 85, 105, 0.55);
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
 }
 
 /* =========================================================
@@ -118,8 +200,9 @@ body {
     ========================================================= */
 .scroll-fade {
     opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+    transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), 
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .scroll-fade.visible {
@@ -128,27 +211,91 @@ body {
 }
 
 /* =========================================================
-    💫 Buttons and Cards Enhancements (Custom Tailwind Components)
+    💫 Premium Component Styles
     ========================================================= */
-.btn-primary {
-    /* Define a reusable primary button style */
-    @apply bg-indigo-600 text-white px-5 py-2 rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:-translate-y-1;
+
+/* Glass card effect */
+.glass-card {
+    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-lg 
+           border border-white/20 dark:border-gray-700/30 
+           p-6 hover:shadow-xl transition-all duration-500 ease-out;
 }
 
+.glass-card:hover {
+    transform: translateY(-4px);
+}
+
+/* Premium button */
+.btn-primary {
+    @apply bg-gradient-to-r from-indigo-600 to-violet-600 text-white 
+           px-6 py-2.5 rounded-xl shadow-lg shadow-indigo-500/25 
+           hover:shadow-xl hover:shadow-indigo-500/30 
+           transition-all duration-300 transform hover:-translate-y-0.5
+           font-semibold text-sm tracking-wide;
+}
+
+/* Standard card with premium hover */
 .card {
-    /* Define a reusable card style with dark mode support and hover effect */
-    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 ease-in-out;
+    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 
+           hover:shadow-xl transition-all duration-500 ease-out
+           border border-gray-100 dark:border-gray-700/50;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+/* Gradient text utility */
+.text-gradient {
+    @apply bg-gradient-to-r from-indigo-600 via-violet-600 to-emerald-500 
+           bg-clip-text text-transparent;
 }
 
 /* =========================================================
-    🌐 Responsive Utilities (Custom Tailwind Utilities)
+    🌐 Responsive Utilities
     ========================================================= */
 .container {
-    /* Define a responsive, centered container utility */
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
 }
 
 .section-title {
-    /* Define a clean, styled section title utility */
-    @apply text-3xl font-semibold mb-6 text-indigo-600 dark:text-indigo-400;
+    @apply text-3xl font-bold mb-6;
+    font-family: var(--font-display);
 }
+
+/* =========================================================
+    🎨 Interactive Micro-animations
+    ========================================================= */
+
+/* Hover lift effect for interactive elements */
+.hover-lift {
+    @apply transition-all duration-300;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    @apply shadow-lg;
+}
+
+/* Subtle focus ring for form elements */
+input:focus, textarea:focus, select:focus {
+    @apply ring-2 ring-indigo-500/20 ring-offset-0;
+}
+
+/* Smooth page transitions */
+.page-transition {
+    animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Active/pressed state */
+.press-effect:active {
+    transform: scale(0.98);
+}
+
+/* Staggered animation delays for lists */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }

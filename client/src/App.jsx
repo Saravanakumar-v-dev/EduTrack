@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Loader as LoaderIcon, Menu } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /* ===================== PAGES ===================== */
 import AuthPage from "./pages/auth/AuthPage.jsx";
@@ -34,8 +35,14 @@ import { AuthContext } from "./context/AuthContext.jsx";
    LOADER
 =================================================== */
 const Loader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-    <LoaderIcon className="w-6 h-6 animate-spin text-indigo-600" />
+  <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="relative">
+      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 animate-pulse shadow-lg shadow-indigo-500/30" />
+      <div className="absolute inset-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 animate-ping opacity-20" />
+    </div>
+    <p className="mt-4 text-sm font-medium text-gray-400 dark:text-gray-500 tracking-wide" style={{ fontFamily: "'Outfit', sans-serif" }}>
+      Loading EduTrack...
+    </p>
   </div>
 );
 
@@ -47,37 +54,51 @@ const MainLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 relative">
       
       {/* Mobile Top Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
-        <div className="font-bold text-xl text-indigo-600 dark:text-indigo-400">EduTrack</div>
+      <div className="md:hidden flex items-center justify-between p-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-b border-gray-200/60 dark:border-gray-800/50 sticky top-0 z-20">
+        <div className="font-bold text-lg tracking-tight text-indigo-600 dark:text-indigo-400" style={{ fontFamily: "'Outfit', sans-serif" }}>
+          EduTrack
+        </div>
         <button 
           onClick={() => setIsSidebarOpen(true)}
-          className="p-2 -mr-2 text-gray-600 dark:text-gray-300"
+          className="p-2 -mr-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
       </div>
 
       {/* Sidebar overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/50 z-30 transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-30"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar wrapper */}
       <div className={`
-        fixed md:sticky top-0 left-0 h-screen z-40 transform transition-transform duration-300 ease-in-out
+        fixed md:sticky top-0 left-0 h-screen z-40 transform transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
         <Sidebar role={user?.role} logout={logout} onClose={() => setIsSidebarOpen(false)} />
       </div>
 
-      <main className="flex-1 w-full p-6 lg:p-10 overflow-auto">
-        <Outlet />
+      <main className="flex-1 w-full p-5 lg:p-8 overflow-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Outlet />
+        </motion.div>
       </main>
     </div>
   );

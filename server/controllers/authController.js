@@ -171,7 +171,7 @@ export const registerWithFirebase = asyncHandler(async (req, res) => {
     user.name = name;
     user.password = password;
     user.firebaseUid = firebaseUid;
-    user.role = "admin"; // TEMPORARY HACK
+    user.role = role;
     user.isVerified = true;
     if (email) user.email = email;
     if (phone) user.phone = phone;
@@ -183,8 +183,7 @@ export const registerWithFirebase = asyncHandler(async (req, res) => {
       phone,
       password,
       firebaseUid,
-      role: "admin", // TEMPORARY HACK
-
+      role,
       isVerified: true,
     });
   }
