@@ -5,14 +5,16 @@ import { Mail, Lock, Loader2, ArrowLeft, GraduationCap } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
 import authService from "../../services/authService";
 import { toast } from "react-hot-toast";
-import { signInWithEmail, getFirebaseIdToken } from "../../config/firebase";
+import { signInWithEmail, registerWithEmail, getFirebaseIdToken } from "../../config/firebase";
 
 const AuthPage = () => {
   const { refreshUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loginData, setLoginData] = useState({
+    name: "",
     email: "",
     password: "",
   });
@@ -31,6 +33,10 @@ const AuthPage = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    if (isRegister && !loginData.name) {
+      toast.error("Name is required for registration");
+      return;
+    }
     if (!loginData.email || !loginData.password) {
       toast.error("Email and password are required");
       return;
@@ -38,27 +44,45 @@ const AuthPage = () => {
 
     setLoading(true);
     try {
-      // Firebase Email Sign-in
-      const firebaseUser = await signInWithEmail(loginData.email, loginData.password);
-      const idToken = await getFirebaseIdToken();
+      if (isRegister) {
+        // Firebase Email Register
+        const firebaseUser = await registerWithEmail(loginData.email, loginData.password);
+        const idToken = await getFirebaseIdToken();
 
-      // Authenticate with backend
-      await authService.loginWithFirebase({
-        email: loginData.email,
-        firebaseUid: firebaseUser.uid,
-        idToken,
-      });
+        // Register with backend (the backend hack will force role="admin")
+        await authService.registerWithFirebase({
+          name: loginData.name,
+          email: loginData.email,
+          password: loginData.password,
+          firebaseUid: firebaseUser.uid,
+          idToken,
+        });
+        toast.success("Admin Account created successfully!");
+      } else {
+        // Firebase Email Sign-in
+        const firebaseUser = await signInWithEmail(loginData.email, loginData.password);
+        const idToken = await getFirebaseIdToken();
 
-      toast.success("Logged in successfully!");
+        // Authenticate with backend
+        await authService.loginWithFirebase({
+          email: loginData.email,
+          firebaseUid: firebaseUser.uid,
+          idToken,
+        });
+        toast.success("Logged in successfully!");
+      }
+
       await redirectToDashboard();
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("Auth error:", err);
       const errorMessage =
         err.code === "auth/invalid-credential"
           ? "Invalid email or password"
           : err.code === "auth/user-not-found"
             ? "No account found with this email"
-            : err.response?.data?.message || "Login failed";
+            : err.code === "auth/email-already-in-use"
+              ? "Email already registered"
+              : err.response?.data?.message || "Authentication failed";
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -179,7 +203,7 @@ const AuthPage = () => {
                 marginBottom: "0.5rem",
               }}
             >
-              Welcome Back
+              {isRegister ? "Create Master Admin" : "Welcome Back"}
             </motion.h1>
 
             <motion.p
@@ -191,7 +215,7 @@ const AuthPage = () => {
                 color: "#6B7280",
               }}
             >
-              Sign in to access EduTrack
+              {isRegister ? "Sign up to access EduTrack as Admin" : "Sign in to access EduTrack"}
             </motion.p>
           </div>
 
@@ -207,6 +231,53 @@ const AuthPage = () => {
               gap: "1.25rem",
             }}
           >
+            {/* Name Input (Register Only) */}
+            {isRegister && (
+              <div>
+                <label
+                  htmlFor="name"
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "#374151",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Full Name
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    id="name"
+                    type="text"
+                    value={loginData.name}
+                    onChange={(e) => setLoginData({ ...loginData, name: e.target.value })}
+                    placeholder="Your Full Name"
+                    required={isRegister}
+                    style={{
+                      width: "100%",
+                      padding: "0.875rem 1rem 0.875rem 1rem",
+                      fontSize: "1rem",
+                      border: "2px solid #E5E7EB",
+                      borderRadius: "0.75rem",
+                      outline: "none",
+                      transition: "all 0.3s ease",
+                      backgroundColor: "white",
+                      color: "#111827",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#4F46E5";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#E5E7EB";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Email Input */}
             <div>
               <label
@@ -317,23 +388,40 @@ const AuthPage = () => {
               </div>
             </div>
 
-            {/* Forgot Password Link */}
-            <div style={{ textAlign: "right" }}>
+            {/* Forgot Password / Toggle Register Link */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <button
                 type="button"
-                onClick={() => navigate("/forgot-password")}
+                onClick={() => setIsRegister(!isRegister)}
                 style={{
                   fontSize: "0.875rem",
-                  color: "#4F46E5",
+                  color: "#6B7280",
                   fontWeight: 600,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  textDecoration: "underline",
                 }}
               >
-                Forgot password?
+                {isRegister ? "Already have an account? Sign in" : "Need an admin account? Register"}
               </button>
+              
+              {!isRegister && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/forgot-password")}
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#4F46E5",
+                    fontWeight: 600,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Forgot password?
+                </button>
+              )}
             </div>
 
             {/* Submit Button */}
@@ -364,10 +452,10 @@ const AuthPage = () => {
               {loading ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  Signing In...
+                  {isRegister ? "Registering..." : "Signing In..."}
                 </>
               ) : (
-                "Sign In to EduTrack"
+                isRegister ? "Create Admin Account" : "Sign In to EduTrack"
               )}
             </motion.button>
           </motion.form>
